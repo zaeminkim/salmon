@@ -1,6 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:kakao_map_sdk/kakao_map_sdk.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  const appKey = String.fromEnvironment('KAKAO_NATIVE_APP_KEY');
+  if (appKey.isEmpty) {
+    throw StateError('KAKAO_NATIVE_APP_KEY를 --dart-define으로 전달하세요.');
+  }
+
+  await KakaoMapSdk.instance.initialize(appKey);
   runApp(const MyApp());
 }
 
@@ -30,7 +39,7 @@ class MyApp extends StatelessWidget {
         // tested with just a hot reload.
         colorScheme: .fromSeed(seedColor: Colors.deepPurple),
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: const SalmonMapPage(),
     );
   }
 }
@@ -116,6 +125,34 @@ class _MyHomePageState extends State<MyHomePage> {
         onPressed: _incrementCounter,
         tooltip: 'Increment',
         child: const Icon(Icons.add),
+      ),
+    );
+  }
+}
+
+class SalmonMapPage extends StatelessWidget {
+  const SalmonMapPage({super.key});
+
+  // 2. Add MapView Widget
+  // 지도를 담고 있는 Widget은 KakaoMap() 함수를 호출하여 사용할 수 있음
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('거슬렁 카카오맵')),
+      body: KakaoMap(
+        option: const KakaoMapOption(
+          position: LatLng(37.5665, 126.9780), // 기본 위치
+          zoomLevel: 16,
+          mapType: MapType.normal,
+        ),
+        // 오류 없이 지도를 불러온다면, onMapReady 매개변수에 담긴 함수가 호출됨
+        // 함수의 매개변수에는 지도를 관리하기 위한 KakaoMapController가 입력됨
+        onMapReady: (KakaoMapController controller) {
+          debugPrint('Salmon 카카오맵 준비 완료');
+        },
+        onMapError: (error) {
+          debugPrint('Salmon 카카오맵 오류: $error');
+        },
       ),
     );
   }
