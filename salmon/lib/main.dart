@@ -1,17 +1,37 @@
 import 'package:flutter/material.dart';
+
 import 'package:kakao_map_sdk/kakao_map_sdk.dart';
 import 'package:salmon/tests/kakaomap_sdk.dart';
 
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
+import 'package:salmon/tests/liquid_glass_widgets.dart';
+
+// // kakao_map_sdk
+// Future<void> main() async {
+//   WidgetsFlutterBinding.ensureInitialized();
+
+//   const appKey = String.fromEnvironment('KAKAO_NATIVE_APP_KEY');
+//   if (appKey.isEmpty) {
+//     throw StateError('KAKAO_NATIVE_APP_KEY를 --dart-define으로 전달하세요.');
+//   }
+
+//   await KakaoMapSdk.instance.initialize(appKey);
+//   runApp(const MyApp());
+// }
+
+// liquid_glass_widgets
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  const appKey = String.fromEnvironment('KAKAO_NATIVE_APP_KEY');
-  if (appKey.isEmpty) {
-    throw StateError('KAKAO_NATIVE_APP_KEY를 --dart-define으로 전달하세요.');
-  }
+  // 유리 효과에 필요한 셰이더를 미리 준비합니다.
+  await LiquidGlassWidgets.initialize();
 
-  await KakaoMapSdk.instance.initialize(appKey);
-  runApp(const MyApp());
+  runApp(
+    LiquidGlassWidgets.wrap(
+      brightnessResolver: Theme.maybeBrightnessOf,
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -21,6 +41,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       title: 'Flutter Demo',
       theme: ThemeData(
         // 애플리케이션의 테마입니다.
@@ -41,7 +62,11 @@ class MyApp extends StatelessWidget {
         // 대부분의 코드 변경은 핫 리로드만으로 확인할 수 있습니다.
         colorScheme: .fromSeed(seedColor: Colors.deepPurple),
       ),
-      home: const KakaomapSdk(),
+
+      builder: (context, child) {
+        return Material(type: MaterialType.transparency, child: child!);
+      },
+      home: const LiquidGlass(),
     );
   }
 }

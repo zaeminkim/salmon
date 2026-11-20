@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:kakao_map_sdk/kakao_map_sdk.dart';
 import 'dart:async';
-import 'package:geolocator/geolocator.dart' as geo;
+import 'package:geolocator/geolocator.dart' as geo; // geo: 패키지에 붙이는 별명
 
 class KakaomapSdk extends StatefulWidget {
   const KakaomapSdk({super.key});
@@ -24,7 +24,7 @@ class _KakaomapSdkState extends State<KakaomapSdk> {
       _controller = controller;
       _stationPoi = null;
     });
-    debugPrint('Salmon 카카오맵 준비 완료');
+    debugPrint('거슬렁 카카오맵 준비 완료');
 
     try {
       await _addOverlays(controller);
@@ -101,7 +101,7 @@ class _KakaomapSdkState extends State<KakaomapSdk> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('거슬렁 카카오맵'),
+        title: const Text('카카오맵 SDK 테스트'),
         // 3. Move the Camera to show the map
         actions: [
           IconButton(
