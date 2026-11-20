@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:kakao_map_sdk/kakao_map_sdk.dart';
+import 'package:salmon/tests/kakaomap_sdk.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -16,30 +17,31 @@ Future<void> main() async {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  // This widget is the root of your application.
+  // 이 위젯은 애플리케이션의 최상위 위젯입니다.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Flutter Demo',
       theme: ThemeData(
-        // This is the theme of your application.
+        // 애플리케이션의 테마입니다.
         //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
+        // 직접 해보기: "flutter run"으로 애플리케이션을 실행해 보세요.
+        // 보라색 툴바가 표시됩니다. 앱을 종료하지 않은 상태에서
+        // 아래 colorScheme의 seedColor를 Colors.green으로 바꾸고
+        // "핫 리로드"를 실행해 보세요.
+        // Flutter를 지원하는 IDE에서는 변경 사항을 저장하거나
+        // "핫 리로드" 버튼을 누르면 됩니다.
+        // 명령줄에서 앱을 실행했다면 "r"을 누르세요.
         //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
+        // 카운터가 0으로 초기화되지 않는다는 점을 확인하세요.
+        // 핫 리로드를 해도 애플리케이션의 상태는 유지됩니다.
+        // 상태를 초기화하려면 핫 리스타트를 사용하세요.
         //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
+        // 값뿐만 아니라 코드에도 적용됩니다.
+        // 대부분의 코드 변경은 핫 리로드만으로 확인할 수 있습니다.
         colorScheme: .fromSeed(seedColor: Colors.deepPurple),
       ),
-      home: const SalmonMapPage(),
+      home: const KakaomapSdk(),
     );
   }
 }
@@ -47,14 +49,14 @@ class MyApp extends StatelessWidget {
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title});
 
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
+  // 이 위젯은 애플리케이션의 홈 페이지입니다.
+  // 상태를 가지는 위젯으로, 화면 표시 방식에 영향을 주는
+  // 필드를 가진 State 객체가 아래에 정의되어 있습니다.
 
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
+  // 이 클래스는 상태에 필요한 설정을 담습니다.
+  // 부모 위젯인 App 위젯이 전달한 값(여기서는 title)을 보관하며,
+  // State의 build 메서드가 이 값을 사용합니다.
+  // Widget을 상속한 클래스의 필드는 항상 "final"로 선언합니다.
 
   final String title;
 
@@ -67,50 +69,51 @@ class _MyHomePageState extends State<MyHomePage> {
 
   void _incrementCounter() {
     setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
+      // setState를 호출하면 Flutter 프레임워크에
+      // 이 State에 변경 사항이 생겼다고 알립니다.
+      // 그러면 아래 build 메서드가 다시 실행되어
+      // 변경된 값이 화면에 반영됩니다.
+      // setState()를 호출하지 않고 _counter만 변경하면
+      // build 메서드가 호출되지 않아 화면에 변화가 나타나지 않습니다.
       _counter++;
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
+    // 이 메서드는 setState가 호출될 때마다 다시 실행됩니다.
+    // 예를 들어 위의 _incrementCounter 메서드에서 호출할 때 실행됩니다.
     //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
+    // Flutter 프레임워크는 build 메서드가 빠르게 재실행되도록
+    // 최적화되어 있습니다. 따라서 변경이 필요한 위젯을
+    // 개별적으로 수정하는 대신 다시 빌드할 수 있습니다.
     return Scaffold(
       appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
+        // 직접 해보기: 이 색상을 특정 색상(예: Colors.amber)으로 바꾸고
+        // 핫 리로드를 실행해 보세요.
+        // 다른 색상은 유지되면서 AppBar의 색상만 바뀌는지 확인하세요.
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
+        // App.build 메서드에서 생성한 MyHomePage 객체의
+        // title 값을 가져와 앱 바의 제목으로 사용합니다.
         title: Text(widget.title),
       ),
       body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
+        // Center는 하나의 자식 위젯을 받아
+        // 부모 영역의 가운데에 배치하는 레이아웃 위젯입니다.
         child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
+          // Column도 레이아웃 위젯입니다.
+          // 여러 자식 위젯을 받아 세로로 배치합니다.
+          // 기본적으로 가로 크기는 자식들을 감쌀 만큼으로 정하고,
+          // 세로 크기는 부모의 높이만큼 커지려고 합니다.
           //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
+          // Column에는 크기와 자식 배치를 제어하는 다양한 속성이 있습니다.
+          // 여기서는 mainAxisAlignment를 사용해 자식들을 세로 가운데에 배치합니다.
+          // Column은 자식들을 세로로 배치하므로 주축은 세로 방향이고,
+          // 교차축은 가로 방향입니다.
           //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
+          // 직접 해보기: IDE에서 "Toggle Debug Paint"를 선택하거나
+          // 콘솔에서 "p"를 눌러 디버그 페인팅을 실행해 보세요.
+          // 각 위젯의 윤곽선을 확인할 수 있습니다.
           mainAxisAlignment: .center,
           children: [
             const Text('You have pushed the button this many times:'),
@@ -125,34 +128,6 @@ class _MyHomePageState extends State<MyHomePage> {
         onPressed: _incrementCounter,
         tooltip: 'Increment',
         child: const Icon(Icons.add),
-      ),
-    );
-  }
-}
-
-class SalmonMapPage extends StatelessWidget {
-  const SalmonMapPage({super.key});
-
-  // 2. Add MapView Widget
-  // 지도를 담고 있는 Widget은 KakaoMap() 함수를 호출하여 사용할 수 있음
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('거슬렁 카카오맵')),
-      body: KakaoMap(
-        option: const KakaoMapOption(
-          position: LatLng(37.5665, 126.9780), // 기본 위치
-          zoomLevel: 16,
-          mapType: MapType.normal,
-        ),
-        // 오류 없이 지도를 불러온다면, onMapReady 매개변수에 담긴 함수가 호출됨
-        // 함수의 매개변수에는 지도를 관리하기 위한 KakaoMapController가 입력됨
-        onMapReady: (KakaoMapController controller) {
-          debugPrint('Salmon 카카오맵 준비 완료');
-        },
-        onMapError: (error) {
-          debugPrint('Salmon 카카오맵 오류: $error');
-        },
       ),
     );
   }
