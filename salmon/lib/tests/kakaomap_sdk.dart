@@ -4,10 +4,11 @@ import 'dart:async';
 import 'package:geolocator/geolocator.dart' as geo; // geo: 패키지에 붙이는 별명
 
 class KakaomapSdk extends StatefulWidget {
-  const KakaomapSdk({super.key});
+  const KakaomapSdk({super.key}); // 생성자: key를 상위 클래스 생성자에 넘김
 
   @override
   State<KakaomapSdk> createState() => _KakaomapSdkState();
+  // 위젯에 사용할 상태 객체를 만들어 반환함
 }
 
 class _KakaomapSdkState extends State<KakaomapSdk> {
@@ -18,7 +19,7 @@ class _KakaomapSdkState extends State<KakaomapSdk> {
   Poi? _stationPoi;
 
   void _onMapReady(KakaoMapController controller) async {
-    if (!mounted) return;
+    if (!mounted) return; // 이 State가 위젯 트리에 연결되어 있는지 확인
 
     setState(() {
       _controller = controller;
@@ -26,6 +27,8 @@ class _KakaomapSdkState extends State<KakaomapSdk> {
     });
     debugPrint('거슬렁 카카오맵 준비 완료');
 
+    // try-catch문
+    // try 안에서 발생한 오류는 catch가 받음
     try {
       await _addOverlays(controller);
     } catch (error, stackTrace) {
@@ -34,10 +37,12 @@ class _KakaomapSdkState extends State<KakaomapSdk> {
     }
   }
 
+  // 지도 조회
   Future<void> _printCameraPosition() async {
-    final controller = _controller;
-    if (controller == null) return;
+    final controller = _controller; // final 변수는 값 재할당 불가
+    if (controller == null) return; // null 이라면 return으로 이 함수의 실행을 끝냄
 
+    // 카메라 조회 완료를 기다림
     final camera = await controller.getCameraPosition();
     debugPrint(
       '지도 중심: ${camera.position.latitude}, '
@@ -124,7 +129,7 @@ class _KakaomapSdkState extends State<KakaomapSdk> {
           mapType: MapType.normal,
         ),
         // 오류 없이 지도를 불러온다면, onMapReady 매개변수에 담긴 함수가 호출됨
-        // 함수의 매개변수에는 지도를 관리하기 위한 KakaoMapController가 입력됨
+        // 그 함수의 매개변수에는 지도를 관리하기 위한 KakaoMapController가 입력됨
         onMapReady: _onMapReady,
         onMapError: (error) {
           debugPrint('Salmon 카카오맵 오류: $error');
