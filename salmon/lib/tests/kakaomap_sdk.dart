@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:kakao_map_sdk/kakao_map_sdk.dart';
 import 'dart:async';
 import 'package:geolocator/geolocator.dart' as geo; // geo: 패키지에 붙이는 별명
+import 'package:dio/dio.dart';
 
 class KakaomapSdk extends StatefulWidget {
   const KakaomapSdk({super.key}); // 생성자: key를 상위 클래스 생성자에 넘김
@@ -77,14 +78,43 @@ class _KakaomapSdkState extends State<KakaomapSdk>
   }
 
   Future<void> _addOverlays(KakaoMapController controller) async {
+    // 이미지가 로딩된 상태에서 합성하도록 미리 준비합니다.
+    const pinImage = AssetImage('assets/images/location-pin.png');
+
+    await precacheImage(pinImage, context);
+    if (!mounted) return;
+
+    final destinationIcon = await KImage.fromWidget(
+      Stack(
+        fit: StackFit.expand,
+        children: [
+          const Image(image: pinImage, fit: BoxFit.fill),
+          Positioned(
+            top: 14,
+            left: 4,
+            right: 4,
+            child: const Text(
+              '도착지',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 7,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+      const Size(28, 36),
+      context: context,
+    );
+
+    if (!mounted) return;
+
     final poi = await controller.labelLayer.addPoi(
       _seoulStation,
       id: 'seoul-station',
-      text: '서울역',
-      style: PoiStyle(
-        icon: KImage.fromAsset('assets/images/pin.png', 36, 36),
-        textStyle: const [PoiTextStyle(size: 20, color: Colors.black)],
-      ),
+      style: PoiStyle(icon: destinationIcon, anchor: const KPoint(0.5, 1.0)),
     );
 
     await controller.routeLayer.addRoute(
@@ -101,7 +131,7 @@ class _KakaomapSdkState extends State<KakaomapSdk>
       _cityHall,
       text: '서울시청',
       style: PoiStyle(
-        icon: KImage.fromAsset('assets/images/pin.png', 36, 36),
+        icon: KImage.fromAsset('assets/images/location-pin.png', 24, 36),
         textStyle: const [PoiTextStyle(size: 20, color: Colors.black)],
       ),
     );
