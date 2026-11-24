@@ -9,26 +9,29 @@ import 'package:salmon/tests/liquid_glass_widgets.dart';
 import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart';
 import 'package:salmon/tests/kakao_login.dart';
 
-// // kakao_map_sdk
-// // UI를 빌드하기 전에 카카오맵 SDK를 준비하는 과정
-// Future<void> main() async {
-// // 1. 화면 시작 전에 SDK를 호출할 준비 - Flutter 바인딩을 준비함
-//   WidgetsFlutterBinding.ensureInitialized();
+import 'package:dio/dio.dart';
+import 'package:salmon/tests/auth.dart';
 
-// // 2. 빌드 과정에서 카카오 앱 키 읽기
-//   const appKey = String.fromEnvironment('KAKAO_NATIVE_APP_KEY');
+// kakao_map_sdk
+// UI를 빌드하기 전에 카카오맵 SDK를 준비하는 과정이 필요하기 때문
+Future<void> main() async {
+// 1. 화면 시작 전에 SDK를 호출할 준비 - Flutter 바인딩을 준비함
+  WidgetsFlutterBinding.ensureInitialized();
 
-// // 3. 키를 전달하지 않았다면 오류 발생
-//   if (appKey.isEmpty) {
-//     throw StateError('KAKAO_NATIVE_APP_KEY를 --dart-define으로 전달하세요.');
-//   }
+// 2. 빌드 과정에서 카카오 앱 키 읽기
+  const appKey = String.fromEnvironment('KAKAO_NATIVE_APP_KEY');
 
-// // 4. 앱 키로 SDK 객체를 초기화하고 완료를 기다림
-//   await KakaoMapSdk.instance.initialize(appKey);
+// 3. 키를 전달하지 않았다면 오류 발생
+  if (appKey.isEmpty) {
+    throw StateError('KAKAO_NATIVE_APP_KEY를 --dart-define으로 전달하세요.');
+  }
 
-// // 5. 앱 화면 시작
-//   runApp(const MyApp());
-// }
+// 4. 앱 키로 SDK 객체를 초기화하고 완료를 기다림
+  await KakaoMapSdk.instance.initialize(appKey);
+
+// 5. 앱 화면 시작
+  runApp(const MyApp());
+}
 
 // // liquid_glass_widgets
 // Future<void> main() async {
@@ -45,24 +48,29 @@ import 'package:salmon/tests/kakao_login.dart';
 //   );
 // }
 
-// kakao_flutter_sdk_user
-Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+// // kakao_flutter_sdk_user
+// Future<void> main() async {
+//   WidgetsFlutterBinding.ensureInitialized();
 
-  const appKey = String.fromEnvironment('KAKAO_NATIVE_APP_KEY');
+//   const appKey = String.fromEnvironment('KAKAO_NATIVE_APP_KEY');
 
-  if (appKey.isEmpty) {
-    throw StateError(
-      'KAKAO_NATIVE_APP_KEY를 --dart-define 또는 '
-      '--dart-define-from-file로 전달하세요.',
-    );
-  }
+//   if (appKey.isEmpty) {
+//     throw StateError(
+//       'KAKAO_NATIVE_APP_KEY를 --dart-define 또는 '
+//       '--dart-define-from-file로 전달하세요.',
+//     );
+//   }
 
-  // 카카오 로그인 SDK 초기화
-  await KakaoSdk.init(nativeAppKey: appKey);
+//   // 카카오 로그인 SDK 초기화
+//   await KakaoSdk.init(nativeAppKey: appKey);
 
-  runApp(const MyApp());
-}
+//   runApp(const MyApp());
+// }
+
+// // dio
+// void main() {
+//   runApp(const MyApp());
+// }
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -96,7 +104,7 @@ class MyApp extends StatelessWidget {
       builder: (context, child) {
         return Material(type: MaterialType.transparency, child: child!);
       },
-      home: const KakaoLogin(),
+      home: const KakaomapSdk(),
     );
   }
 }
