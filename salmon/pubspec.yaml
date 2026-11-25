@@ -51,6 +51,17 @@ dev_dependencies:
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
 
+  flutter_launcher_icons: ^0.14.4
+
+flutter_launcher_icons:
+  android: true # 안드로이드 플랫폼에 런처 아이콘 적용 여부
+  ios: false # iOS 플랫폼에 런처 아이콘 적용 여부
+  image_path: "assets/icons/appicon.png" # 런처 아이콘으로 사용할 이미지 경로
+  adaptive_icon_background: "#ffffff" # 안드로이드 적응형 아이콘의 배경색 (검정색)
+  adaptive_icon_foreground: "assets/icons/appicon.png" # 안드로이드 적응형 아이콘의 전경 이미지 경로
+  min_sdk_android: 21
+  remove_alpha_ios: true
+
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
 
@@ -67,6 +78,7 @@ flutter:
     #   - images/a_dot_ham.jpeg
     - assets/images/location-pin.png
     - assets/images/current-pin.png
+    - assets/icons/appicon.png
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

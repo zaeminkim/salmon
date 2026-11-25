@@ -4,6 +4,67 @@ import 'dart:async';
 import 'package:geolocator/geolocator.dart' as geo; // geo: 패키지에 붙이는 별명
 import 'package:dio/dio.dart';
 
+// 검색 API의 문자열 좌표를 앱에서 사용할 숫자로 변환합니다.
+// 공통 데이터 타입을 선언
+class KakaoSearchResult {
+  const KakaoSearchResult({
+    required this.name,
+    required this.address,
+    required this.latitude,
+    required this.longitude,
+    required this.isAddress,
+    this.placeId,
+    this.category = '',
+  });
+
+  final String name;
+  final String address;
+  final double latitude;
+  final double longitude;
+  final bool isAddress;
+  final String? placeId;
+  final String category;
+
+  static KakaoSearchResult? fromDocument(
+    Map<String, dynamic> document, {
+    required bool isAddress,
+  }) {
+    final latitude = double.tryParse('${document['y']}');
+    final longitude = double.tryParse('${document['x']}');
+    if (latitude == null ||
+        longitude == null ||
+        !latitude.isFinite ||
+        !longitude.isFinite ||
+        latitude.abs() > 90 ||
+        longitude.abs() > 180) {
+      return null;
+    }
+
+    final roadAddress = document['road_address_name'] as String? ?? '';
+    final address = document['address_name'] as String? ?? '';
+    return KakaoSearchResult(
+      name: isAddress ? address : document['place_name'] as String? ?? '',
+      address: roadAddress.isNotEmpty ? roadAddress : address,
+      latitude: latitude,
+      longitude: longitude,
+      isAddress: isAddress,
+      placeId: document['id'] as String?,
+      category: document['category_name'] as String? ?? '',
+    );
+  }
+
+  // 이후 백엔드 연동 시 이 정보를 요청 본문으로 사용할 수 있습니다.
+  Map<String, Object?> toJson() => {
+    'provider': 'kakao',
+    'type': isAddress ? 'address' : 'place',
+    'placeId': placeId,
+    'name': name,
+    'address': address,
+    'latitude': latitude,
+    'longitude': longitude,
+  };
+}
+
 class KakaomapSdk extends StatefulWidget {
   const KakaomapSdk({super.key}); // 생성자: key를 상위 클래스 생성자에 넘김
 
@@ -21,6 +82,254 @@ class _KakaomapSdkState extends State<KakaomapSdk>
 
   KakaoMapController? _controller;
   Poi? _stationPoi;
+
+  // salmon.local.json의 REST API 키를 빌드 시 읽습니다.
+  static const _restApiKey = String.fromEnvironment('KAKAO_REST_API_KEY');
+  final _searchController = TextEditingController(); // 검색창의 텍스트 관리
+  final _searchFocus = FocusNode(); // 검색창의 입력 포커스 관리
+  // 카카오 검색 API 호출
+  final _searchDio = Dio(
+    BaseOptions(
+      baseUrl: 'https://dapi.kakao.com/v2/local/search',
+      connectTimeout: const Duration(seconds: 10),
+      receiveTimeout: const Duration(seconds: 10),
+    ),
+  );
+  Timer? _searchDebounce;
+  CancelToken? _searchCancelToken;
+  int _searchGeneration = 0;
+  bool _isSearching = false;
+  String? _searchMessage;
+  List<KakaoSearchResult> _searchResults = [];
+  KakaoSearchResult? _selectedSearchResult;
+
+  // 새 입력이 오면 이전 타이머/요청을 중단하고 400ms 후 검색합니다.
+  void _onSearchChanged(String value) {
+    _searchDebounce?.cancel();
+    _searchCancelToken?.cancel();
+    final generation = ++_searchGeneration;
+    final query = value.trim();
+    setState(() {
+      _searchResults = [];
+      _selectedSearchResult = null;
+      _searchMessage = null;
+      _isSearching = query.isNotEmpty;
+    });
+    if (query.isEmpty) return;
+    _searchDebounce = Timer(const Duration(milliseconds: 400), () {
+      unawaited(_searchPlaces(query, generation));
+    });
+  }
+
+  String _searchErrorMessage(DioException error) {
+    return switch (error.response?.statusCode) {
+      401 => 'REST API 키가 올바른지 확인해 주세요. (401)',
+      403 => '카카오 API 사용 권한과 키 제한 설정을 확인해 주세요. (403)',
+      429 => '검색 요청 한도를 초과했습니다. 잠시 후 다시 시도해 주세요. (429)',
+      _ => '검색에 실패했습니다. 네트워크를 확인하고 다시 검색해 주세요.',
+    };
+  }
+
+  Future<void> _searchPlaces(String query, int generation) async {
+    if (!mounted || generation != _searchGeneration) return;
+    if (_restApiKey.trim().isEmpty) {
+      setState(() {
+        _isSearching = false;
+        _searchMessage =
+            'salmon.local.json에 KAKAO_REST_API_KEY를 추가한 뒤 다시 빌드해 주세요.';
+      });
+      return;
+    }
+
+    final cancelToken = CancelToken();
+    _searchCancelToken = cancelToken;
+
+    // 한 API가 실패해도 다른 API의 성공 결과는 표시합니다.
+    Future<({List<KakaoSearchResult> results, String? error})> fetch(
+      bool isAddress,
+    ) async {
+      try {
+        final response = await _searchDio.get<Map<String, dynamic>>(
+          isAddress ? '/address.json' : '/keyword.json',
+          queryParameters: {
+            'query': query,
+            'size': 10,
+            if (isAddress) 'analyze_type': 'similar',
+          },
+          options: Options(headers: {'Authorization': 'KakaoAK $_restApiKey'}),
+          cancelToken: cancelToken,
+        );
+        final documents = response.data?['documents'] as List<dynamic>? ?? [];
+        final results = documents
+            .map(
+              (item) => KakaoSearchResult.fromDocument(
+                Map<String, dynamic>.from(item as Map),
+                isAddress: isAddress,
+              ),
+            )
+            .whereType<KakaoSearchResult>()
+            .toList();
+        return (results: results, error: null);
+      } on DioException catch (error) {
+        if (CancelToken.isCancel(error)) {
+          return (results: <KakaoSearchResult>[], error: null);
+        }
+        return (
+          results: <KakaoSearchResult>[],
+          error: _searchErrorMessage(error),
+        );
+      } catch (_) {
+        return (
+          results: <KakaoSearchResult>[],
+          error: '검색 결과를 해석하지 못했습니다. 다시 시도해 주세요.',
+        );
+      }
+    }
+
+    final responses = await Future.wait([fetch(false), fetch(true)]);
+    if (!mounted ||
+        generation != _searchGeneration ||
+        cancelToken.isCancelled) {
+      return;
+    }
+    final results = responses.expand((response) => response.results).toList();
+    final errors = responses
+        .map((response) => response.error)
+        .whereType<String>()
+        .toSet();
+    setState(() {
+      _searchResults = results;
+      _isSearching = false;
+      _searchMessage = errors.isNotEmpty
+          ? errors.join('\n')
+          : results.isEmpty
+          ? '검색 결과가 없습니다. 장소명이나 주소를 더 입력해 주세요.'
+          : null;
+    });
+  }
+
+  Future<void> _selectSearchResult(KakaoSearchResult result) async {
+    _searchDebounce?.cancel();
+    _searchCancelToken?.cancel();
+    ++_searchGeneration;
+    _searchFocus.unfocus();
+    _searchController.text = result.name;
+    setState(() {
+      _selectedSearchResult = result;
+      _searchResults = [];
+      _searchMessage = null;
+      _isSearching = false;
+    });
+    // 정보는 메모리에만 보관하며 백엔드 요청은 보내지 않습니다.
+    final controller = _controller;
+    if (controller == null) return;
+    try {
+      await controller.moveCamera(
+        CameraUpdate.newCenterPosition(
+          LatLng(result.latitude, result.longitude),
+        ),
+        animation: const CameraAnimation(500),
+      );
+    } catch (_) {
+      if (mounted) _showLocationMessage('검색 정보는 선택됐지만 지도 이동에 실패했습니다.');
+    }
+  }
+
+  Widget _buildSearchPanel() {
+    final selected = _selectedSearchResult;
+    return Material(
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: _searchController,
+              focusNode: _searchFocus,
+              onChanged: _onSearchChanged,
+              onSubmitted: _onSearchChanged,
+              textInputAction: TextInputAction.search,
+              decoration: InputDecoration(
+                hintText: '장소명 또는 주소 검색',
+                prefixIcon: const Icon(Icons.search),
+                filled: true,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(28),
+                  borderSide: BorderSide.none,
+                ),
+                suffixIcon: IconButton(
+                  tooltip: '검색 지우기',
+                  onPressed: () {
+                    _searchController.clear();
+                    _onSearchChanged('');
+                    _searchFocus.requestFocus();
+                  },
+                  icon: const Icon(Icons.close),
+                ),
+              ),
+            ),
+            if (_isSearching)
+              const Padding(
+                padding: EdgeInsets.only(top: 8),
+                child: LinearProgressIndicator(),
+              ),
+            if (_searchMessage != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(_searchMessage!),
+              ),
+            if (_searchResults.isNotEmpty)
+              ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.sizeOf(context).height * 0.3,
+                ),
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  keyboardDismissBehavior:
+                      ScrollViewKeyboardDismissBehavior.onDrag,
+                  itemCount: _searchResults.length,
+                  separatorBuilder: (_, index) => const Divider(height: 1),
+                  itemBuilder: (context, index) {
+                    final result = _searchResults[index];
+                    return ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: Icon(
+                        result.isAddress
+                            ? Icons.home_outlined
+                            : Icons.place_outlined,
+                      ),
+                      title: Text(result.name),
+                      subtitle: Text(
+                        [
+                          result.isAddress ? '주소' : '장소',
+                          if (result.address != result.name) result.address,
+                          if (result.category.isNotEmpty) result.category,
+                        ].join(' · '),
+                      ),
+                      onTap: () => _selectSearchResult(result),
+                    );
+                  },
+                ),
+              ),
+            if (selected != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: SelectableText(
+                    '선택한 ${selected.isAddress ? '주소' : '장소'}: ${selected.name}\n'
+                    '주소: ${selected.address}\n'
+                    '위도: ${selected.latitude} / 경도: ${selected.longitude}'
+                    '${selected.placeId == null ? '' : '\n장소 ID: ${selected.placeId}'}',
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
 
   // Geolocator
   Poi? _myLocationPoi; // 지도에 추가한 파란 점 객체
@@ -53,7 +362,7 @@ class _KakaomapSdkState extends State<KakaomapSdk>
 
     if (!mounted || _controller != controller) return;
 
-    await _startLocation(moveCamera: true);
+    await _startLocation(moveCamera: _selectedSearchResult == null);
   }
 
   // 지도 조회
@@ -410,6 +719,11 @@ class _KakaomapSdkState extends State<KakaomapSdk>
     WidgetsBinding.instance.removeObserver(this);
 
     _stopLocation();
+    _searchDebounce?.cancel();
+    _searchCancelToken?.cancel();
+    _searchDio.close(force: true);
+    _searchController.dispose();
+    _searchFocus.dispose();
 
     super.dispose();
   }
@@ -423,6 +737,8 @@ class _KakaomapSdkState extends State<KakaomapSdk>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset:
+          false, // 키보드가 표시돼도 본문을 줄이지 않고, 키보드가 본문 위를 덮도록 한다.
       appBar: AppBar(
         title: const Text('카카오맵 SDK 테스트'),
         // 3. Move the Camera to show the map
@@ -439,20 +755,74 @@ class _KakaomapSdkState extends State<KakaomapSdk>
           ),
         ],
       ),
-      body: KakaoMap(
-        option: const KakaoMapOption(
-          // position: LatLng(37.5665, 126.9780), // 기본 위치
-          position: _cityHall,
-          zoomLevel: 16,
-          mapType: MapType.normal,
-        ),
-        // 오류 없이 지도를 불러온다면, onMapReady 매개변수에 담긴 함수가 호출됨
-        // 그 함수의 매개변수에는 지도를 관리하기 위한 KakaoMapController가 입력됨
-        onMapReady: _onMapReady,
-        onMapError: (error) {
-          debugPrint('Salmon 카카오맵 오류: $error');
-        },
-      ),
+      body:
+          // Column(
+          //   children: [
+          //     _buildSearchPanel(),
+          //     Expanded(
+          //       child: KakaoMap(
+          //         option: const KakaoMapOption(
+          //           // position: LatLng(37.5665, 126.9780), // 기본 위치
+          //           position: _cityHall,
+          //           zoomLevel: 16,
+          //           mapType: MapType.normal,
+          //         ),
+          //         // 오류 없이 지도를 불러온다면, onMapReady 매개변수에 담긴 함수가 호출됨
+          //         // 그 함수의 매개변수에는 지도를 관리하기 위한 KakaoMapController가 입력됨
+          //         onMapReady: _onMapReady,
+          //         onMapError: (error) {
+          //           debugPrint('Salmon 카카오맵 오류: $error');
+          //         },
+          //       ),
+          //     ),
+          //   ],
+          // ),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              // 현재 키보드가 차지하는 높이입니다.
+              final keyboardHeight = MediaQuery.viewInsetsOf(context).bottom;
+
+              // 검색 패널만 키보드 위의 공간에 들어가도록 제한합니다.
+              final searchMaxHeight =
+                  (constraints.maxHeight - keyboardHeight - 8)
+                      .clamp(0.0, constraints.maxHeight)
+                      .toDouble();
+
+              return Stack(
+                children: [
+                  // 지도는 항상 같은 본문 영역을 채웁니다.
+                  Positioned.fill(
+                    child: KakaoMap(
+                      option: const KakaoMapOption(
+                        position: _cityHall,
+                        zoomLevel: 16,
+                        mapType: MapType.normal,
+                      ),
+                      onMapReady: _onMapReady,
+                      onMapError: (error) {
+                        debugPrint('Salmon 카카오맵 오류: $error');
+                      },
+                    ),
+                  ),
+
+                  // 검색창과 검색 결과는 지도 위에 표시합니다.
+                  Positioned(
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(maxHeight: searchMaxHeight),
+                      child: SingleChildScrollView(
+                        keyboardDismissBehavior:
+                            ScrollViewKeyboardDismissBehavior.onDrag,
+                        child: _buildSearchPanel(),
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
       floatingActionButton: FloatingActionButton(
         onPressed: _controller == null || _isLocating ? null : _goToMyLocation,
         tooltip: '현재 위치로 이동',
