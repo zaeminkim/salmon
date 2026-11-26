@@ -1,7 +1,7 @@
 // 앱 설정과 첫 화면을 정함
 
 import 'package:flutter/material.dart';
-import 'package:salmon/ui/auth/login_screen.dart';
+import 'package:salmon/ui/my_routes/myroutes_screen.dart';
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -13,11 +13,11 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: '거슬렁',
       theme: ThemeData(),
-
       builder: (context, child) {
         return Material(type: MaterialType.transparency, child: child!);
       },
-      home: LoginScreen(),
+      home: MyRoutesScreen(),
+      routes: {'/my_routes': (_) => const MyRoutesScreen()},
     );
   }
 }

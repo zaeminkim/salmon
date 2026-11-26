@@ -12,15 +12,7 @@ class _LiquidGlassState extends State<LiquidGlass> {
   // 컴포넌트의 현재 값
   bool _enabled = true;
   bool _favorite = false;
-  final bool _notifications = true;
-
-  final int _periodIndex = 0;
   int _tabIndex = 0;
-
-  final double _volume = 0.5;
-  final double _steppedValue = 0.75;
-
-  String _query = '';
 
   final _nameController = TextEditingController();
 
@@ -115,14 +107,7 @@ class _LiquidGlassState extends State<LiquidGlass> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 28.0),
               // 검색창
-              child: GlassSearchBar(
-                placeholder: '버스 번호를 입력하세요',
-                onChanged: (value) {
-                  setState(() {
-                    _query = value;
-                  });
-                },
-              ),
+              child: const GlassSearchBar(placeholder: '버스 번호를 입력하세요'),
             ),
             SizedBox(height: 24),
             Padding(

@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:salmon/tests/kakaomap_sdk.dart';
+import 'package:salmon/ui/route_search/routesearch_screen.dart';
 
 void main() {
   test('장소 응답의 좌표와 도로명 주소를 선택 정보로 변환한다', () {

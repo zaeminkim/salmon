@@ -4,66 +4,7 @@ import 'dart:async';
 import 'package:geolocator/geolocator.dart' as geo; // geo: 패키지에 붙이는 별명
 import 'package:dio/dio.dart';
 
-// 검색 API의 문자열 좌표를 앱에서 사용할 숫자로 변환합니다.
-// 공통 데이터 타입을 선언
-class KakaoSearchResult {
-  const KakaoSearchResult({
-    required this.name,
-    required this.address,
-    required this.latitude,
-    required this.longitude,
-    required this.isAddress,
-    this.placeId,
-    this.category = '',
-  });
-
-  final String name;
-  final String address;
-  final double latitude;
-  final double longitude;
-  final bool isAddress;
-  final String? placeId;
-  final String category;
-
-  static KakaoSearchResult? fromDocument(
-    Map<String, dynamic> document, {
-    required bool isAddress,
-  }) {
-    final latitude = double.tryParse('${document['y']}');
-    final longitude = double.tryParse('${document['x']}');
-    if (latitude == null ||
-        longitude == null ||
-        !latitude.isFinite ||
-        !longitude.isFinite ||
-        latitude.abs() > 90 ||
-        longitude.abs() > 180) {
-      return null;
-    }
-
-    final roadAddress = document['road_address_name'] as String? ?? '';
-    final address = document['address_name'] as String? ?? '';
-    return KakaoSearchResult(
-      name: isAddress ? address : document['place_name'] as String? ?? '',
-      address: roadAddress.isNotEmpty ? roadAddress : address,
-      latitude: latitude,
-      longitude: longitude,
-      isAddress: isAddress,
-      placeId: document['id'] as String?,
-      category: document['category_name'] as String? ?? '',
-    );
-  }
-
-  // 이후 백엔드 연동 시 이 정보를 요청 본문으로 사용할 수 있습니다.
-  Map<String, Object?> toJson() => {
-    'provider': 'kakao',
-    'type': isAddress ? 'address' : 'place',
-    'placeId': placeId,
-    'name': name,
-    'address': address,
-    'latitude': latitude,
-    'longitude': longitude,
-  };
-}
+import '../ui/route_search/routesearch_screen.dart' show KakaoSearchResult;
 
 class KakaomapSdk extends StatefulWidget {
   const KakaomapSdk({super.key}); // 생성자: key를 상위 클래스 생성자에 넘김
@@ -81,7 +22,6 @@ class _KakaomapSdkState extends State<KakaomapSdk>
   static const _seoulStation = LatLng(37.5547, 126.9707);
 
   KakaoMapController? _controller;
-  Poi? _stationPoi;
 
   // salmon.local.json의 REST API 키를 빌드 시 읽습니다.
   static const _restApiKey = String.fromEnvironment('KAKAO_REST_API_KEY');
@@ -346,7 +286,6 @@ class _KakaomapSdkState extends State<KakaomapSdk>
 
     setState(() {
       _controller = controller;
-      _stationPoi = null;
       _myLocationPoi = null;
     });
     debugPrint('거슬렁 카카오맵 준비 완료');
@@ -420,7 +359,7 @@ class _KakaomapSdkState extends State<KakaomapSdk>
 
     if (!mounted) return;
 
-    final poi = await controller.labelLayer.addPoi(
+    await controller.labelLayer.addPoi(
       _seoulStation,
       id: 'seoul-station',
       style: PoiStyle(icon: destinationIcon, anchor: const KPoint(0.5, 1.0)),
@@ -450,12 +389,6 @@ class _KakaomapSdkState extends State<KakaomapSdk>
     //   LatLng(37.5600, 126.9750),
     //   _seoulStation,
     // ], style: PolylineTextStyle(24, Colors.deepPurple));
-
-    if (!mounted) return;
-
-    setState(() {
-      _stationPoi = poi;
-    });
   }
 
   // geolocator
