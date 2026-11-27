@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:salmon/data/auth/auth_api.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -134,10 +135,18 @@ class _NotificationSettingsState extends State<_NotificationSettings> {
   }
 }
 
-class _AccountSettings extends StatelessWidget {
+class _AccountSettings extends StatefulWidget {
   const _AccountSettings();
 
+  @override
+  State<_AccountSettings> createState() => _AccountSettingsState();
+}
+
+class _AccountSettingsState extends State<_AccountSettings> {
+  bool _loggingOut = false;
+
   Future<void> _confirmLogout(BuildContext context) async {
+    if (_loggingOut) return;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => Dialog(
@@ -204,15 +213,33 @@ class _AccountSettings extends StatelessWidget {
     );
 
     if (confirmed == true && context.mounted) {
-      Navigator.of(context).pushAndRemoveUntil<void>(
-        MaterialPageRoute(builder: (_) => const LoginScreen()),
-        (_) => false,
-      );
+      _loggingOut = true;
+      try {
+        final warning = await AuthApi.instance.logout();
+        if (!context.mounted) return;
+        if (warning != null) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(warning)));
+        }
+        Navigator.of(context).pushAndRemoveUntil<void>(
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+          (_) => false,
+        );
+      } catch (_) {
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('로그아웃을 완료하지 못했어요. 다시 시도해 주세요.')),
+        );
+      } finally {
+        _loggingOut = false;
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final user = AuthApi.instance.user;
     return _SettingsPage(
       title: '계정',
       body: ListView(
@@ -220,10 +247,14 @@ class _AccountSettings extends StatelessWidget {
         children: [
           const Text('로그인 정보', style: _sectionStyle),
           const SizedBox(height: 16),
-          const _SettingsCard(
-            background: Color(0xFFF5F5F5),
-            title: '거슬렁 사용자',
-            description: '로그인 정보 없음',
+          _SettingsCard(
+            background: const Color(0xFFF5F5F5),
+            title: user?.nickname ?? '거슬렁 사용자',
+            description: switch (user?.email) {
+              null => '로그인 정보 없음',
+              '' => '카카오 계정으로 로그인',
+              final email => email,
+            },
           ),
           const SizedBox(height: 20),
           _SettingsMenuRow(

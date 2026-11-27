@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'package:salmon/ui/auth/login_screen.dart';
@@ -30,6 +31,7 @@ void main() {
   testWidgets('Opens withdrawal and confirms logout through the account menu', (
     tester,
   ) async {
+    FlutterSecureStorage.setMockInitialValues({});
     await tester.binding.setSurfaceSize(const Size(393, 852));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(const MaterialApp(home: SettingsScreen()));

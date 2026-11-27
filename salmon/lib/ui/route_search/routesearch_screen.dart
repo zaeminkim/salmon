@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
+import 'package:salmon/ui/core/widgets/app_primary_button.dart';
 
 const _brand = Color(0xFFD9553E);
 
@@ -64,49 +65,6 @@ class KakaoSearchResult {
   };
 }
 
-// 검색창 UI
-class RouteSearchField extends StatelessWidget {
-  const RouteSearchField({
-    required this.label,
-    required this.controller,
-    required this.focusNode,
-    required this.onChanged,
-    required this.onSubmitted,
-    required this.settings,
-    required this.onCancel,
-    super.key,
-  });
-
-  final TextEditingController controller;
-  final String label;
-  final FocusNode focusNode;
-  final ValueChanged<String> onChanged;
-  final ValueChanged<String> onSubmitted;
-  final LiquidGlassSettings settings;
-  final VoidCallback onCancel;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      child: GlassSearchBar(
-        controller: controller,
-        focusNode: focusNode,
-        onChanged: onChanged,
-        onSubmitted: onSubmitted,
-        onCancel: onCancel,
-        showsCancelButton: true,
-        cancelButtonAlwaysVisible: true,
-        cancelButtonSemanticLabel: '장소 선택 취소',
-        placeholder: '$label 검색',
-        clearButtonSemanticLabel: '검색 지우기',
-        autocorrect: false,
-        settings: settings,
-      ),
-    );
-  }
-}
-
 // 검색 결과 목록 UI
 class RouteSearchScreen extends StatelessWidget {
   const RouteSearchScreen({
@@ -165,7 +123,6 @@ class RouteSearchScreen extends StatelessWidget {
 class RouteSearchPanel extends StatelessWidget {
   const RouteSearchPanel({
     super.key,
-    required this.settings,
     required this.origin,
     required this.destination,
     required this.busField,
@@ -175,7 +132,6 @@ class RouteSearchPanel extends StatelessWidget {
     this.suggestions,
   });
 
-  final LiquidGlassSettings settings;
   final Widget origin;
   final Widget destination;
   final Widget busField;
@@ -202,66 +158,21 @@ class RouteSearchPanel extends StatelessWidget {
           safeArea.right + 16,
           bottomInset + 16,
         ),
-        child: GlassContainer.card(
-          settings: settings,
-          useOwnLayer: true,
-          padding: const EdgeInsets.all(12),
-          shape: const LiquidRoundedRectangle(borderRadius: 20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            spacing: 12,
-            children: [
-              origin,
-              destination,
-              ?suggestions,
-              busField,
-              FilledButton(
-                style: FilledButton.styleFrom(
-                  backgroundColor: _brand,
-                  foregroundColor: Colors.white,
-                  disabledBackgroundColor: const Color(0xFFE0E0E2),
-                  disabledForegroundColor: const Color(0xFF606067),
-                  minimumSize: const Size(0, 52),
-                ),
-                onPressed: onSearch,
-                child: const Text('경로 검색'),
-              ),
-            ],
-          ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          spacing: 12,
+          children: [
+            origin,
+            destination,
+            ?suggestions,
+            busField,
+            AppPrimaryButton(
+              label: '경로 검색',
+              onTap: onSearch ?? () {},
+              enabled: onSearch != null,
+            ),
+          ],
         ),
-      ),
-    );
-  }
-}
-
-class RoutePanelRow extends StatelessWidget {
-  const RoutePanelRow({
-    super.key,
-    required this.icon,
-    required this.title,
-    required this.onTap,
-    this.subtitle,
-  });
-
-  final IconData icon;
-  final String title;
-  final String? subtitle;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.85),
-        border: Border.all(color: const Color(0xFFA9ABB0)),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: GlassListTile(
-        leading: Icon(icon),
-        title: Text(title),
-        subtitle: subtitle == null ? null : Text(subtitle!),
-        trailing: const Icon(Icons.chevron_right),
-        onTap: onTap,
       ),
     );
   }

@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'package:kakao_map_sdk/kakao_map_sdk.dart';
+import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart' as kakao;
 
 import 'app/app.dart';
 
@@ -17,6 +18,7 @@ Future<void> main() async {
 
   // 카카오맵을 열기 전에 SDK 초기화
   await KakaoMapSdk.instance.initialize(appKey);
+  kakao.KakaoSdk.init(nativeAppKey: appKey);
 
   // 유리 효과에 필요한 셰이더를 미리 세팅.
   await LiquidGlassWidgets.initialize();
@@ -24,6 +26,9 @@ Future<void> main() async {
   runApp(
     LiquidGlassWidgets.wrap(
       brightnessResolver: Theme.maybeBrightnessOf,
+      theme: GlassThemeData(
+        light: GlassThemeVariant.light.copyWith(quality: GlassQuality.standard),
+      ),
       child: const MyApp(),
     ),
   );

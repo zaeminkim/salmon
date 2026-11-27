@@ -1,12 +1,20 @@
 // 앱 설정과 첫 화면을 정함
 
 import 'package:flutter/material.dart';
+import 'package:salmon/data/auth/auth_api.dart';
+import 'package:salmon/ui/auth/login_screen.dart';
 import 'package:salmon/ui/my_routes/myroutes_screen.dart';
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
 
-  // 이 위젯은 애플리케이션의 최상위 위젯입니다.
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  late final _restoredSession = AuthApi.instance.restore();
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -16,7 +24,19 @@ class MyApp extends StatelessWidget {
       builder: (context, child) {
         return Material(type: MaterialType.transparency, child: child!);
       },
-      home: MyRoutesScreen(),
+      home: FutureBuilder<bool>(
+        future: _restoredSession,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState != ConnectionState.done) {
+            return const Scaffold(
+              body: Center(child: CircularProgressIndicator()),
+            );
+          }
+          return snapshot.data == true
+              ? const MyRoutesScreen()
+              : const LoginScreen();
+        },
+      ),
       routes: {'/my_routes': (_) => const MyRoutesScreen()},
     );
   }

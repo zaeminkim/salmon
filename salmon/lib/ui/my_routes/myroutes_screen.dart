@@ -9,14 +9,23 @@ import 'package:kakao_map_sdk/kakao_map_sdk.dart';
 import 'package:geolocator/geolocator.dart' as geo; // geo: 패키지에 붙이는 별명
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
+import '../../data/journeys/journey_example_api.dart';
+import '../core/journey_presentation.dart';
+import '../route_results/journey_preview_map.dart'
+    show journeyPosition, journeyShapePoints;
 import '../route_results/routeresults_screen.dart';
+import '../route_search/bus_route_search_field.dart';
 import '../route_search/routesearch_screen.dart';
 import '../settings/settings_screen.dart';
+import 'widgets/saved_routes_overlay.dart';
 
 const _brand = Color(0xFFD9553E);
 
 class MyRoutesScreen extends StatefulWidget {
-  const MyRoutesScreen({super.key}); // 생성자: key를 상위 클래스 생성자에 넘김
+  const MyRoutesScreen({super.key, this.journeyClient, this.savedRouteExample});
+
+  final Dio? journeyClient;
+  final Future<Map<String, dynamic>>? savedRouteExample;
 
   @override
   State<MyRoutesScreen> createState() => _MyRoutesScreenState();
@@ -28,7 +37,6 @@ class _MyRoutesScreenState extends State<MyRoutesScreen>
         WidgetsBindingObserver // 앱의 백그라운드 전환과 복귀를 감지
         {
   static const _cityHall = LatLng(37.5665, 126.9780);
-  static const _seoulStation = LatLng(37.5547, 126.9707);
 
   static const _headingChannel = EventChannel('salmon/device_heading');
 
@@ -38,18 +46,32 @@ class _MyRoutesScreenState extends State<MyRoutesScreen>
   PoiStyle? _locationHeadingStyle;
 
   int _tabIndex = 0;
+  bool _savedExampleSelected = true;
+  late final _savedExample = widget.savedRouteExample ?? loadJourneyExample();
+  final _savedRouteRemovals = <Future<void> Function()>[];
+  final _savedRoutePinStyles = <bool, PoiStyle>{};
+  PolylineStyle _savedRouteLineStyle = PolylineStyle(_brand, 4);
+  Future<void> _savedRouteUpdates = Future<void>.value();
+  int _savedRouteRevision = 0;
+  bool get _showSavedExample => _tabIndex == 0 && _savedExampleSelected;
 
   // salmon.local.json의 REST API 키를 빌드 시 읽습니다.
   static const _restApiKey = String.fromEnvironment('KAKAO_REST_API_KEY');
-  final _searchController = TextEditingController(); // 검색창의 텍스트 관리
-  final _searchFocus = FocusNode(); // 검색창의 입력 포커스 관리
+  final _originController = TextEditingController();
+  final _destinationController = TextEditingController();
+  final _originFocus = FocusNode();
+  final _destinationFocus = FocusNode();
 
   KakaoSearchResult? _origin;
   KakaoSearchResult? _destination;
+  final _routePins = <bool, Poi>{};
+  final _routePinStyles = <bool, PoiStyle>{};
+  Future<void> _routePinUpdates = Future<void>.value();
   bool? _editingOrigin; // true: 출발지, false: 목적지, null: 편집 종료
   final _routeSheet = GlassModalSheetController();
   final _busNumberController = TextEditingController();
   final _busNumberFocus = FocusNode();
+  String? _selectedBusRoute;
   GlassSheetState _routeSheetState = GlassSheetState.hidden;
 
   // 카카오 검색 API 호출
@@ -177,21 +199,17 @@ class _MyRoutesScreenState extends State<MyRoutesScreen>
     });
   }
 
-  void _editPlace({required bool origin}) {
-    _searchController.clear();
-    setState(() => _editingOrigin = origin);
-    _onSearchChanged('');
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && _editingOrigin == origin) {
-        _searchFocus.requestFocus();
-      }
-    });
+  void _startPlaceEdit(bool origin) {
+    final focus = origin ? _originFocus : _destinationFocus;
+    if (!focus.hasFocus) return;
+    _editingOrigin = origin;
+    final place = origin ? _origin : _destination;
+    final controller = origin ? _originController : _destinationController;
+    _onSearchChanged(place == null ? controller.text : '');
   }
 
   void _cancelPlaceEdit() {
-    _searchFocus.unfocus();
-    _searchController.clear();
+    if (_editingOrigin == null) return;
     _onSearchChanged('');
     setState(() => _editingOrigin = null);
   }
@@ -199,7 +217,8 @@ class _MyRoutesScreenState extends State<MyRoutesScreen>
   void _onRouteSheetStateChanged(GlassSheetState state) {
     if (state != GlassSheetState.full) {
       _busNumberFocus.unfocus();
-      _searchFocus.unfocus();
+      _originFocus.unfocus();
+      _destinationFocus.unfocus();
     }
     if (state == GlassSheetState.hidden && _editingOrigin != null) {
       _cancelPlaceEdit();
@@ -211,14 +230,20 @@ class _MyRoutesScreenState extends State<MyRoutesScreen>
     final origin = _origin;
     final destination = _destination;
     if (origin == null || destination == null) return;
-    final busNumber = _busNumberController.text.trim().toUpperCase();
+    final enteredBusNumber = _busNumberController.text
+        .replaceAll(RegExp(r'\s+'), '')
+        .toUpperCase();
     FocusScope.of(context).unfocus();
     Navigator.of(context).push<void>(
       MaterialPageRoute(
         builder: (_) => RouteResultsScreen(
           origin: origin,
           destination: destination,
-          preferredBusNumber: busNumber.isEmpty ? null : busNumber,
+          preferredBusNumber: enteredBusNumber.isEmpty
+              ? null
+              : _selectedBusRoute ?? enteredBusNumber,
+          preferredBusLabel: enteredBusNumber,
+          journeyClient: widget.journeyClient,
         ),
       ),
     );
@@ -231,8 +256,10 @@ class _MyRoutesScreenState extends State<MyRoutesScreen>
     _searchDebounce?.cancel();
     _searchCancelToken?.cancel();
     ++_searchGeneration;
-    _searchFocus.unfocus();
-    _searchController.text = result.name;
+    _originFocus.unfocus();
+    _destinationFocus.unfocus();
+    (editingOrigin ? _originController : _destinationController).text =
+        result.name;
     setState(() {
       if (editingOrigin) {
         _origin = result;
@@ -249,8 +276,196 @@ class _MyRoutesScreenState extends State<MyRoutesScreen>
     });
     final controller = _controller;
     if (controller != null) {
+      _updateRoutePin(controller, origin: editingOrigin, place: result);
       await _moveCameraToSearchResult(controller, result);
     }
+  }
+
+  void _updateRoutePin(
+    KakaoMapController controller, {
+    required bool origin,
+    required KakaoSearchResult? place,
+  }) {
+    KakaoSearchResult? activePlace() =>
+        _tabIndex == 1 ? (origin ? _origin : _destination) : null;
+    // Keep native add/remove calls in order when a selection quickly changes.
+    _routePinUpdates = _routePinUpdates.then((_) async {
+      if (!mounted ||
+          _controller != controller ||
+          !identical(activePlace(), place)) {
+        return;
+      }
+
+      try {
+        final previous = _routePins[origin];
+        if (previous != null) {
+          await previous.remove();
+          if (!mounted || _controller != controller) return;
+          _routePins.remove(origin);
+        }
+        if (place == null || !identical(activePlace(), place)) {
+          return;
+        }
+
+        final pin = await controller.labelLayer.addPoi(
+          LatLng(place.latitude, place.longitude),
+          id: origin ? 'route-origin' : 'route-destination',
+          text: origin ? '출발지' : '목적지',
+          rank: 9000,
+          style: _routePinStyles.putIfAbsent(
+            origin,
+            () => PoiStyle(
+              icon: KImage.fromAsset('assets/images/location-pin.png', 28, 36),
+              anchor: const KPoint(0.5, 1.0),
+              textStyle: [
+                PoiTextStyle(
+                  size: 15,
+                  color: origin
+                      ? const Color(0xFF246046)
+                      : const Color(0xFF9A3627),
+                  stroke: 2,
+                  strokeColor: Colors.white,
+                ),
+              ],
+            ),
+          ),
+        );
+        if (mounted && _controller == controller) _routePins[origin] = pin;
+      } catch (error) {
+        debugPrint('길찾기 핀 갱신 실패: $error');
+      }
+    });
+  }
+
+  void _syncSearchPins(KakaoMapController controller) {
+    _updateRoutePin(
+      controller,
+      origin: true,
+      place: _tabIndex == 1 ? _origin : null,
+    );
+    _updateRoutePin(
+      controller,
+      origin: false,
+      place: _tabIndex == 1 ? _destination : null,
+    );
+  }
+
+  void _onSavedExampleSelected(bool selected) {
+    if (_savedExampleSelected == selected) return;
+    _savedExampleSelected = selected;
+    _syncSavedRouteMap();
+  }
+
+  void _syncSavedRouteMap() {
+    final controller = _controller;
+    if (controller == null) return;
+    final revision = ++_savedRouteRevision;
+    bool hasMap() => mounted && identical(_controller, controller);
+    bool isCurrent() => hasMap() && revision == _savedRouteRevision;
+
+    _savedRouteUpdates = _savedRouteUpdates.then((_) async {
+      if (!isCurrent()) return;
+      try {
+        while (_savedRouteRemovals.isNotEmpty) {
+          await _savedRouteRemovals.last();
+          if (!hasMap()) return;
+          _savedRouteRemovals.removeLast();
+        }
+        if (!isCurrent() || !_showSavedExample) return;
+        final example = await _savedExample;
+        if (!isCurrent()) return;
+        final origin = journeyPosition(example['origin']);
+        final destination = journeyPosition(example['destination']);
+        if (origin == null || destination == null) return;
+        final candidates = example['candidates'];
+        final candidate = candidates is List
+            ? candidates.whereType<Map<String, dynamic>>().firstOrNull
+            : null;
+        final detail = await loadJourneyExampleDetail(
+          searchId: example['search_id'],
+          candidateId: candidate?['candidate_id'],
+        );
+        if (!isCurrent()) return;
+        final route = detail?['candidate'];
+        final lines = [
+          if (route is Map<String, dynamic>)
+            for (final segment in journeySegments(route))
+              if (segment['is_actual_shape'] == true)
+                if (journeyShapePoints(segment) case final points?)
+                  (
+                    points: points,
+                    style: PolylineStyle(journeySegmentColor(segment), 4),
+                  ),
+        ];
+        if (lines.isEmpty && origin != destination) {
+          lines.add((
+            points: [origin, destination],
+            style: _savedRouteLineStyle,
+          ));
+        }
+
+        for (final (position, isOrigin) in [
+          (origin, true),
+          (destination, false),
+        ]) {
+          final pin = await controller.labelLayer.addPoi(
+            position,
+            id: isOrigin ? 'saved-route-origin' : 'saved-route-destination',
+            text: isOrigin ? '출발지' : '도착지',
+            rank: 9000,
+            style: _savedRoutePinStyles.putIfAbsent(
+              isOrigin,
+              () => PoiStyle(
+                icon: KImage.fromAsset(
+                  'assets/images/location-pin.png',
+                  28,
+                  36,
+                ),
+                anchor: const KPoint(0.5, 1.0),
+                textStyle: [
+                  PoiTextStyle(
+                    size: 15,
+                    color: isOrigin
+                        ? const Color(0xFF246046)
+                        : const Color(0xFF9A3627),
+                    stroke: 2,
+                    strokeColor: Colors.white,
+                  ),
+                ],
+              ),
+            ),
+          );
+          if (!hasMap()) return;
+          _savedRouteRemovals.add(pin.remove);
+          if (!isCurrent()) return;
+        }
+        for (final (index, segment) in lines.indexed) {
+          final line = await controller.shapeLayer.addPolylineShape(
+            MapPoint(segment.points),
+            segment.style,
+            PolylineCap.round,
+            id: index == 0 ? 'saved-route-line' : 'saved-route-line-$index',
+          );
+          if (!hasMap()) return;
+          _savedRouteRemovals.add(line.remove);
+          if (!isCurrent()) return;
+        }
+        if (!isCurrent()) return;
+        if (_gpsSelected) setState(() => _gpsSelected = false);
+        final points = {
+          origin,
+          destination,
+          for (final line in lines) ...line.points,
+        };
+        await controller.moveCamera(
+          points.length == 1
+              ? CameraUpdate.newCenterPosition(origin)
+              : CameraUpdate.fitMapPoints(points.toList(), padding: 120),
+        );
+      } catch (error) {
+        debugPrint('내 경로 지도 갱신 실패: $error');
+      }
+    });
   }
 
   Future<void> _moveCameraToSearchResult(
@@ -289,6 +504,11 @@ class _MyRoutesScreenState extends State<MyRoutesScreen>
     if (_controller == controller) return;
 
     if (_controller != null) _stopLocation();
+    _routePins.clear();
+    _routePinStyles.clear();
+    _savedRouteRemovals.clear();
+    _savedRoutePinStyles.clear();
+    _savedRouteLineStyle = PolylineStyle(_brand, 4);
     setState(() {
       _controller = controller;
       _locationDotStyle = PoiStyle(
@@ -303,81 +523,17 @@ class _MyRoutesScreenState extends State<MyRoutesScreen>
     });
     debugPrint('거슬렁 카카오맵 준비 완료');
 
-    // try-catch문
-    // try 안에서 발생한 오류는 catch가 받음
-    try {
-      await _addOverlays(controller);
-    } catch (error, stackTrace) {
-      debugPrint('오버레이 추가 실패 $error');
-      debugPrintStack(stackTrace: stackTrace);
-    }
-
-    if (!mounted || _controller != controller) return;
+    _syncSearchPins(controller);
+    _syncSavedRouteMap();
 
     final selected = _selectedSearchResult;
-    if (selected != null) {
+    if (_tabIndex == 1 && selected != null) {
       await _moveCameraToSearchResult(controller, selected);
     }
-    await _startLocation(shouldMoveCamera: () => _selectedSearchResult == null);
-  }
-
-  Future<void> _addOverlays(KakaoMapController controller) async {
-    // 이미지가 로딩된 상태에서 합성하도록 미리 준비합니다.
-    const pinImage = AssetImage('assets/images/location-pin.png');
-
-    await precacheImage(pinImage, context);
-    if (!mounted) return;
-
-    final destinationIcon = await KImage.fromWidget(
-      Stack(
-        fit: StackFit.expand,
-        children: [
-          const Image(image: pinImage, fit: BoxFit.fill),
-          Positioned(
-            top: 14,
-            left: 4,
-            right: 4,
-            child: const Text(
-              '도착지',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 7,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ],
-      ),
-      const Size(28, 36),
-      context: context,
-    );
-
-    if (!mounted) return;
-
-    await controller.labelLayer.addPoi(
-      _seoulStation,
-      id: 'seoul-station',
-      style: PoiStyle(icon: destinationIcon, anchor: const KPoint(0.5, 1.0)),
-    );
-
-    await controller.routeLayer.addRoute(
-      const [_cityHall, LatLng(37.5600, 126.9750), _seoulStation],
-      RouteStyle(
-        Colors.orange,
-        16.0,
-        strokeColor: Colors.white,
-        strokeWidth: 2.0,
-      ),
-    );
-
-    await controller.lodLabelLayer.addLodPoi(
-      _cityHall,
-      text: '서울시청',
-      style: PoiStyle(
-        icon: KImage.fromAsset('assets/images/location-pin.png', 24, 36),
-        textStyle: const [PoiTextStyle(size: 20, color: Colors.black)],
-      ),
+    await _startLocation(
+      shouldMoveCamera: () =>
+          !_showSavedExample &&
+          (_tabIndex == 0 || _selectedSearchResult == null),
     );
   }
 
@@ -655,6 +811,11 @@ class _MyRoutesScreenState extends State<MyRoutesScreen>
   @override
   void initState() {
     super.initState();
+    _originFocus.addListener(() => _startPlaceEdit(true));
+    _destinationFocus.addListener(() => _startPlaceEdit(false));
+    _busNumberFocus.addListener(() {
+      if (_busNumberFocus.hasFocus) _cancelPlaceEdit();
+    });
 
     WidgetsBinding.instance.addObserver(this);
   }
@@ -684,8 +845,10 @@ class _MyRoutesScreenState extends State<MyRoutesScreen>
     _searchDebounce?.cancel();
     _searchCancelToken?.cancel();
     _searchDio.close(force: true);
-    _searchController.dispose();
-    _searchFocus.dispose();
+    _originController.dispose();
+    _destinationController.dispose();
+    _originFocus.dispose();
+    _destinationFocus.dispose();
     _busNumberController.dispose();
     _busNumberFocus.dispose();
     super.dispose();
@@ -713,8 +876,9 @@ class _MyRoutesScreenState extends State<MyRoutesScreen>
   @override
   Widget build(BuildContext context) {
     final barGlassSettings = LiquidGlassSettings.ios27Light.copyWith(
-      glassColor: const Color(0x7DF8F8F8),
-      frostOpacity: 0.6,
+      glassColor: const Color(0xBFFFFFFF),
+      rimShade: 1.7,
+      rimShadeEnds: 0.45,
     );
     const mapButtonSize = 48.0;
     GlassIconButton glassIconButton({
@@ -739,11 +903,8 @@ class _MyRoutesScreenState extends State<MyRoutesScreen>
     const searchTabIndex = 1;
     final keyboardHeight = MediaQuery.viewInsetsOf(context).bottom;
     final routeSheetVisible = _routeSheetState != GlassSheetState.hidden;
-    final hideAppBar =
-        _routeSheetState == GlassSheetState.full ||
-        (routeSheetVisible && keyboardHeight > 0);
     final pageFocusScope = FocusScope.of(context);
-    const appBarPadding = EdgeInsets.symmetric(horizontal: 20, vertical: 16);
+    const appBarPadding = EdgeInsets.symmetric(horizontal: 20, vertical: 12);
     final appBar = GlassAppBar(
       padding: appBarPadding,
       title: const Text(
@@ -807,6 +968,9 @@ class _MyRoutesScreenState extends State<MyRoutesScreen>
         setState(() {
           _tabIndex = index;
         });
+        final controller = _controller;
+        if (controller != null) _syncSearchPins(controller);
+        _syncSavedRouteMap();
         _routeSheet.snapToState(
           index == searchTabIndex
               ? GlassSheetState.half
@@ -819,10 +983,10 @@ class _MyRoutesScreenState extends State<MyRoutesScreen>
     return GlassScaffold(
       resizeToAvoidBottomInset:
           false, // 키보드가 표시돼도 본문을 줄이지 않고, 키보드가 본문 위를 덮도록 한다.
-      appBar: PreferredSize(
-        preferredSize: appBar.preferredSize,
-        child: Offstage(offstage: hideAppBar, child: appBar),
-      ),
+      edgeStyle: GlassScrollEdgeStyle.blur,
+      bottomEdgeFade: false,
+      maxSigma: 24.0,
+      appBar: appBar,
       bottomBar: PreferredSize(
         preferredSize: tabBar.preferredSize,
         child: Center(
@@ -836,38 +1000,77 @@ class _MyRoutesScreenState extends State<MyRoutesScreen>
       body: LayoutBuilder(
         builder: (context, constraints) {
           final safeArea = MediaQuery.viewPaddingOf(context);
-          final mapControlsRight = safeArea.right + 16;
+          final appBarBottom =
+              safeArea.top +
+              appBar.preferredSize.height +
+              appBarPadding.vertical;
+          final mapControlsRight = safeArea.right + 20;
           final tabBarInset = safeArea.bottom + tabBar.preferredSize.height;
-          final gpsBottom = math.max(keyboardHeight, tabBarInset) + 12;
+          final savedCardHeight = math.min(
+            SavedRoutesOverlay.maxCardHeight,
+            math.max(
+              0.0,
+              constraints.maxHeight - appBarBottom - tabBarInset - 120,
+            ),
+          );
+          final gpsBottom =
+              math.max(keyboardHeight, tabBarInset) +
+              12 +
+              (_tabIndex == 0 ? savedCardHeight + 8 : 0);
           final sheetHeight = math.max(
             0.0,
-            constraints.maxHeight - safeArea.top - keyboardHeight,
+            constraints.maxHeight - appBarBottom - keyboardHeight,
           );
 
-          Widget placeRow({
-            required bool origin,
-            required KakaoSearchResult? place,
-          }) {
-            final label = origin ? '출발지' : '목적지';
+          InputDecoration fieldDecoration(String hint, IconData icon) {
+            final border = OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+            );
+            return InputDecoration(
+              hintText: hint,
+              prefixIcon: Icon(icon),
+              filled: true,
+              fillColor: Colors.white,
+              border: border,
+              enabledBorder: border.copyWith(
+                borderSide: const BorderSide(color: Color(0xFFDADCE0)),
+              ),
+              focusedBorder: border.copyWith(
+                borderSide: const BorderSide(color: _brand, width: 1.5),
+              ),
+            );
+          }
 
-            if (_editingOrigin == origin) {
-              return RouteSearchField(
-                key: ValueKey(label),
-                label: label,
-                controller: _searchController,
-                focusNode: _searchFocus,
-                onChanged: _onSearchChanged,
-                onSubmitted: (value) => _onSearchChanged(value, submit: true),
-                settings: barGlassSettings,
-                onCancel: _cancelPlaceEdit,
-              );
-            }
-
-            return RoutePanelRow(
-              icon: origin ? Icons.my_location : Icons.place_outlined,
-              title: place?.name ?? label,
-              subtitle: place == null ? null : label,
-              onTap: () => _editPlace(origin: origin),
+          Widget placeField({required bool origin}) {
+            return TextField(
+              decoration: fieldDecoration(
+                origin ? '출발지' : '목적지',
+                origin ? Icons.my_location : Icons.place_outlined,
+              ),
+              controller: origin ? _originController : _destinationController,
+              focusNode: origin ? _originFocus : _destinationFocus,
+              autocorrect: false,
+              textInputAction: TextInputAction.search,
+              onChanged: (value) {
+                _editingOrigin = origin;
+                final previous = origin ? _origin : _destination;
+                if (origin) {
+                  _origin = null;
+                } else {
+                  _destination = null;
+                }
+                if (previous != null) {
+                  if (identical(_selectedSearchResult, previous)) {
+                    _selectedSearchResult = _origin ?? _destination;
+                  }
+                  final controller = _controller;
+                  if (controller != null) {
+                    _updateRoutePin(controller, origin: origin, place: null);
+                  }
+                }
+                _onSearchChanged(value);
+              },
+              onSubmitted: (value) => _onSearchChanged(value, submit: true),
             );
           }
 
@@ -902,19 +1105,36 @@ class _MyRoutesScreenState extends State<MyRoutesScreen>
                 ),
               ),
 
+              Positioned.fill(
+                top: appBarBottom + 8,
+                bottom: tabBarInset,
+                left: safeArea.left,
+                right: safeArea.right,
+                child: Offstage(
+                  offstage: _tabIndex != 0,
+                  child: SavedRoutesOverlay(
+                    settings: barGlassSettings,
+                    cardHeight: savedCardHeight,
+                    example: _savedExample,
+                    onExampleSelected: _onSavedExampleSelected,
+                  ),
+                ),
+              ),
+
               // GlassScaffold paints the bottom bar above this body stack.
               if (sheetHeight > 48)
                 Positioned.fill(
-                  top: safeArea.top,
+                  top: appBarBottom,
                   bottom: keyboardHeight,
                   child: ClipRect(
                     child: Stack(
                       children: [
                         GlassModalSheet(
+                          quality: GlassQuality.minimal,
                           controller: _routeSheet,
                           initialState: _routeSheetState,
                           halfSize: math.min(
-                            constraints.maxHeight * 0.42,
+                            constraints.maxHeight * 0.46,
                             sheetHeight * 0.85,
                           ),
                           fullSize: sheetHeight,
@@ -923,7 +1143,7 @@ class _MyRoutesScreenState extends State<MyRoutesScreen>
                           bottomMargin: 0,
                           topBorderRadius: 24,
                           bottomBorderRadius: 0,
-                          fullTopBorderRadius: 0,
+                          fullTopBorderRadius: null,
                           settings: barGlassSettings.copyWith(
                             glassColor: Colors.white,
                             blur: 0,
@@ -940,31 +1160,22 @@ class _MyRoutesScreenState extends State<MyRoutesScreen>
                             canRequestFocus: false,
                             descendantsAreFocusable: routeSheetVisible,
                             child: RouteSearchPanel(
-                              settings: barGlassSettings,
                               bottomInset: keyboardHeight > 0
                                   ? 0
                                   : tabBarInset + safeArea.bottom,
                               keyboardVisible: keyboardHeight > 0,
-                              origin: placeRow(origin: true, place: _origin),
-                              destination: placeRow(
-                                origin: false,
-                                place: _destination,
-                              ),
-                              busField: TextField(
+                              origin: placeField(origin: true),
+                              destination: placeField(origin: false),
+                              busField: BusRouteSearchField(
+                                decoration: fieldDecoration(
+                                  '선호 광역버스 (선택)',
+                                  Icons.directions_bus_outlined,
+                                ),
                                 controller: _busNumberController,
                                 focusNode: _busNumberFocus,
-                                decoration: const InputDecoration(
-                                  prefixIcon: Icon(
-                                    Icons.directions_bus_outlined,
-                                  ),
-                                  labelText: '선호 광역버스 (선택)',
-                                  hintText: '예: M5107',
-                                  border: OutlineInputBorder(),
-                                ),
-                                autocorrect: false,
-                                textCapitalization:
-                                    TextCapitalization.characters,
-                                textInputAction: TextInputAction.done,
+                                onSelectionChanged: (route) {
+                                  _selectedBusRoute = route;
+                                },
                               ),
                               suggestions: _editingOrigin == null
                                   ? null

@@ -1,12 +1,14 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:geolocator/geolocator.dart' as geo;
 import 'package:kakao_map_sdk/kakao_map_sdk.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
+import 'package:salmon/ui/core/widgets/app_primary_button.dart';
 import 'package:salmon/ui/my_routes/myroutes_screen.dart';
 import 'package:salmon/ui/route_results/routeresults_screen.dart';
 import 'package:salmon/ui/route_search/routesearch_screen.dart'
@@ -35,7 +37,29 @@ void main() {
   });
 
   testWidgets(
-    'Keeps the route sheet below the status bar and submits all three fields',
+    'Saved route chips and cards share a selection and open management',
+    (tester) async {
+      await tester.pumpWidget(const MaterialApp(home: MyRoutesScreen()));
+      final chips = find.byType(GlassChip);
+      final pages = tester.widget<PageView>(find.byType(PageView)).controller!;
+      await tester.tap(chips.at(1));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 150));
+      expect(pages.page, allOf(greaterThan(0), lessThan(1)));
+      await tester.pumpAndSettle();
+      expect(tester.widget<GlassChip>(chips.at(1)).selected, isTrue);
+      expect(find.text('회사 → 집').hitTestable(), findsOneWidget);
+      await tester.fling(find.byType(PageView), const Offset(-500, 0), 1000);
+      await tester.pumpAndSettle();
+      expect(tester.widget<GlassChip>(chips.at(2)).selected, isTrue);
+      await tester.tap(find.widgetWithIcon(GlassIconButton, Icons.tune));
+      await tester.pumpAndSettle();
+      expect(find.widgetWithText(AppBar, '경로 관리'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'Keeps the route sheet below the app bar and submits all three fields',
     (tester) async {
       const statusBarHeight = 59.0;
       tester.view.devicePixelRatio = 1;
@@ -49,7 +73,79 @@ void main() {
       addTearDown(tester.view.resetDevicePixelRatio);
       addTearDown(tester.view.resetViewPadding);
       addTearDown(tester.view.resetPadding);
-      await tester.pumpWidget(const MaterialApp(home: MyRoutesScreen()));
+      final journeyRequests = <RequestOptions>[];
+      final journeyClient = Dio()
+        ..interceptors.add(
+          InterceptorsWrapper(
+            onRequest: (request, handler) {
+              journeyRequests.add(request);
+              handler.resolve(
+                Response(
+                  requestOptions: request,
+                  statusCode: 200,
+                  data: <String, dynamic>{
+                    'search_id': 'test-search',
+                    'candidates': [
+                      {
+                        'candidate_id': 'odsay-0',
+                        'summary': {'total_minutes': 42},
+                        'segments': [
+                          {'type': 'walk', 'duration_minutes': 8},
+                          {
+                            'type': 'bus',
+                            'duration_minutes': 34,
+                            'route_name': 'M5107',
+                            'boarding_station': {'name': '정류장 A'},
+                            'alighting_station': {'name': '정류장 B'},
+                          },
+                        ],
+                      },
+                      {
+                        'candidate_id': 'odsay-1',
+                        'summary': {'total_minutes': 47},
+                        'segments': [
+                          {'type': 'subway', 'duration_minutes': 47},
+                        ],
+                      },
+                    ],
+                    'filters': [
+                      {'key': 'all', 'label': '전체'},
+                      {
+                        'key': 'preferred_express_bus',
+                        'label': 'M5107 이용',
+                        'candidate_ids': ['odsay-0'],
+                      },
+                    ],
+                  },
+                ),
+              );
+            },
+          ),
+        );
+      addTearDown(journeyClient.close);
+      final savedRouteExample = Future<Map<String, dynamic>>.value({
+        'origin': {
+          'name': '영통입구',
+          'latitude': 37.2779667,
+          'longitude': 127.0519833,
+        },
+        'destination': {
+          'name': '서울역',
+          'latitude': 37.55515,
+          'longitude': 126.9727333,
+        },
+        'candidates': [
+          {'total_time_minutes': 68},
+        ],
+      });
+      await tester.pumpWidget(
+        MaterialApp(
+          home: MyRoutesScreen(
+            journeyClient: journeyClient,
+            savedRouteExample: savedRouteExample,
+          ),
+        ),
+      );
       final screen = find.byType(GlassScaffold);
       final bottomBar = find.byType(GlassTabBar);
       final appBar = find.byType(GlassAppBar);
@@ -97,7 +193,68 @@ void main() {
       expect(tester.getSize(bottomBar).width, 340);
 
       final map = tester.element(find.byType(KakaoMap));
+      final originalGeolocator = geo.GeolocatorPlatform.instance;
+      geo.GeolocatorPlatform.instance = _TestGeolocator();
+      addTearDown(() => geo.GeolocatorPlatform.instance = originalGeolocator);
+      const overlays = MethodChannel('test.route-pins/overlay');
+      final pins = <String, String>{};
+      final savedPins = <String, String>{};
+      final savedLines = <String>{};
+      final cameraUpdates = <CameraUpdate>[];
+      var styleCount = 0;
+      messenger.setMockMethodCallHandler(overlays, (call) async {
+        final arguments = call.arguments as Map;
+        switch (call.method) {
+          case 'addPoiStyle':
+            return 'style-${++styleCount}';
+          case 'addPoi':
+            final poi = arguments['poi'] as Map;
+            final id = poi['id'] as String;
+            if (id.startsWith('route-')) pins[id] = poi['text'] as String;
+            if (id.startsWith('saved-route-')) {
+              savedPins[id] = poi['text'] as String;
+            }
+            return id;
+          case 'removePoi':
+            pins.remove(arguments['poiId']);
+            savedPins.remove(arguments['poiId']);
+          case 'addPolylineShapeStyle':
+            return 'line-style';
+          case 'addPolylineShape':
+            final line = arguments['polyline'] as Map;
+            final id = line['id'] as String;
+            savedLines.add(id);
+            return id;
+          case 'removePolylineShape':
+            savedLines.remove(arguments['polylineId']);
+        }
+        return null;
+      });
+      addTearDown(() => messenger.setMockMethodCallHandler(overlays, null));
+      tester
+          .widget<KakaoMap>(find.byType(KakaoMap))
+          .onMapReady(
+            _TestMapController(overlays, (update) async {
+              cameraUpdates.add(update);
+            }),
+          );
+      await tester.pumpAndSettle();
+      expect(savedPins, {
+        'saved-route-origin': '출발지',
+        'saved-route-destination': '도착지',
+      });
+      expect(savedLines, {'saved-route-line'});
+      expect(cameraUpdates.single.type, CameraUpdateType.fitMapPoints);
+      await tester.tap(find.widgetWithText(GlassChip, '퇴근길'));
+      await tester.pumpAndSettle();
+      expect(savedPins, isEmpty);
+      expect(savedLines, isEmpty);
+      await tester.tap(find.widgetWithText(GlassChip, '예시 경로'));
+      await tester.pumpAndSettle();
+      expect(savedPins, hasLength(2));
+      expect(savedLines, {'saved-route-line'});
       final appBarElement = tester.element(appBar);
+      final appBarBottom = tester.getBottomLeft(appBar).dy;
       final titleBounds = tester.getRect(title);
       expect(find.byType(GlassSearchBar), findsNothing);
       final sheet = find.byType(GlassModalSheet);
@@ -106,8 +263,10 @@ void main() {
       expect(sheetController.currentState, GlassSheetState.hidden);
       await tester.tap(searchTabLabel.first);
       await tester.pumpAndSettle();
+      expect(savedPins, isEmpty);
+      expect(savedLines, isEmpty);
       expect(sheetController.currentState, GlassSheetState.half);
-      expect(sheetController.value, closeTo(0.42, 0.01));
+      expect(sheetController.value, closeTo(0.46, 0.01));
       await tester.tap(searchTabLabel.first);
       await tester.pumpAndSettle();
       expect(sheetController.currentState, GlassSheetState.hidden);
@@ -116,7 +275,10 @@ void main() {
       await tester.tap(searchTabLabel.first);
       await tester.pumpAndSettle();
       expect(sheetController.currentState, GlassSheetState.half);
-      final busInput = find.widgetWithText(TextField, '선호 광역버스 (선택)');
+      Finder input(String label) => find.byWidgetPredicate(
+        (w) => w is TextField && w.decoration?.hintText == label,
+      );
+      final busInput = input('선호 광역버스 (선택)');
       expect(busInput.hitTestable(), findsOneWidget);
       await tester.tap(busInput);
       await tester.pumpAndSettle();
@@ -129,13 +291,13 @@ void main() {
       await tester.drag(dragHandle, const Offset(0, -530));
       await tester.pumpAndSettle();
       expect(sheetController.currentState, GlassSheetState.full);
-      expect(sheetController.value * 844, closeTo(844 - statusBarHeight, 1));
+      expect(sheetController.value * 844, closeTo(844 - appBarBottom, 1));
       expect(
         tester.getTopLeft(dragHandle).dy,
-        greaterThanOrEqualTo(statusBarHeight),
+        greaterThanOrEqualTo(appBarBottom),
       );
       expect(tester.takeException(), isNull);
-      expect(appBar, findsNothing);
+      expect(tester.element(appBar), same(appBarElement));
       expect(searchTabLabel, findsWidgets);
       await tester.tap(searchTabLabel.first);
       await tester.pumpAndSettle();
@@ -157,32 +319,32 @@ void main() {
       await tester.pumpAndSettle();
       expect(sheetController.currentState, GlassSheetState.half);
 
-      final searchBar = find.byType(GlassSearchBar);
+      final searchBar = input('출발지');
       final panel = find.byType(RouteSearchPanel);
-      final searchButton = find.widgetWithText(FilledButton, '경로 검색');
+      final searchButton = find.widgetWithText(AppPrimaryButton, '경로 검색');
       expect(panel, findsOneWidget);
-      final card = find.descendant(
-        of: panel,
-        matching: find.byType(GlassContainer),
-      );
-      expect(find.descendant(of: card, matching: busInput), findsOneWidget);
       expect(
-        find.descendant(of: card, matching: find.text('출발지')),
+        find.descendant(of: panel, matching: find.byType(TextField)),
+        findsNWidgets(3),
+      );
+      expect(find.descendant(of: panel, matching: busInput), findsOneWidget);
+      expect(
+        find.descendant(of: panel, matching: find.text('출발지')),
         findsOneWidget,
       );
       expect(
-        find.descendant(of: card, matching: find.text('목적지')),
+        find.descendant(of: panel, matching: find.text('목적지')),
         findsOneWidget,
       );
-      expect(searchBar, findsNothing);
-      expect(tester.widget<FilledButton>(searchButton).onPressed, isNull);
+      expect(searchBar, findsOneWidget);
+      expect(tester.widget<AppPrimaryButton>(searchButton).enabled, isFalse);
       expect(tester.getRect(settings), settingsBounds);
       expect(tester.getRect(notifications), notificationBounds);
       expect(tester.element(appBar), same(appBarElement));
       expect(tester.getRect(title), titleBounds);
       expect(tester.element(find.byType(KakaoMap)), same(map));
 
-      await tester.tap(find.text('출발지'));
+      await tester.tap(input('출발지'));
       await tester.pumpAndSettle();
       expect(find.descendant(of: panel, matching: searchBar), findsOneWidget);
       expect(tester.testTextInput.isVisible, isTrue);
@@ -191,6 +353,7 @@ void main() {
         bottom: keyboardHeight * tester.view.devicePixelRatio,
       );
       addTearDown(tester.view.resetViewInsets);
+      await tester.pumpAndSettle();
       await tester.enterText(
         find.descendant(of: searchBar, matching: find.byType(EditableText)),
         '서울시청',
@@ -201,7 +364,7 @@ void main() {
       final progress = find.byType(GlassProgressIndicator);
       expect(progress, findsOneWidget);
       expect(tester.widget<GlassProgressIndicator>(progress).value, isNull);
-      expect(tester.getTopLeft(resultsPanel).dy, greaterThan(statusBarHeight));
+      expect(tester.getTopLeft(resultsPanel).dy, greaterThan(appBarBottom));
       expect(
         tester.getBottomLeft(resultsPanel).dy,
         lessThan(tester.getSize(screen).height - keyboardHeight),
@@ -217,10 +380,11 @@ void main() {
       tester.widget<RouteSearchScreen>(resultsPanel).onResultSelected(origin);
       tester.view.resetViewInsets();
       await tester.pumpAndSettle();
-      expect(searchBar, findsNothing);
-      expect(tester.widget<FilledButton>(searchButton).onPressed, isNull);
+      expect(pins, {'route-origin': '출발지'});
+      expect(searchBar, findsOneWidget);
+      expect(tester.widget<AppPrimaryButton>(searchButton).enabled, isFalse);
 
-      await tester.tap(find.text('목적지'));
+      await tester.tap(input('목적지'));
       await tester.pumpAndSettle();
       expect(find.text('서울시청'), findsOneWidget);
       const destination = KakaoSearchResult(
@@ -234,7 +398,8 @@ void main() {
           .widget<RouteSearchScreen>(resultsPanel)
           .onResultSelected(destination);
       await tester.pumpAndSettle();
-      expect(tester.widget<FilledButton>(searchButton).onPressed, isNotNull);
+      expect(pins, {'route-origin': '출발지', 'route-destination': '목적지'});
+      expect(tester.widget<AppPrimaryButton>(searchButton).enabled, isTrue);
 
       await tester.enterText(busInput, 'm5107');
       tester.view.viewInsets = FakeViewPadding(
@@ -257,16 +422,59 @@ void main() {
       expect(result.origin, same(origin));
       expect(result.destination, same(destination));
       expect(result.preferredBusNumber, 'M5107');
+      expect(journeyRequests.single.path, '/api/v1/journeys/search');
+      expect(journeyRequests.single.data, {
+        'origin': {'latitude': 37.5665, 'longitude': 126.978, 'name': '서울시청'},
+        'destination': {
+          'latitude': 37.5547,
+          'longitude': 126.9706,
+          'name': '서울역',
+        },
+        'preferred_express_bus': 'M5107',
+      });
+
+      final fullSize = tester.view.physicalSize;
+      tester.view.physicalSize = const Size(390, 500);
+      await tester.pumpAndSettle();
+      final recommendation = find.text('거슬렁 추천순');
+      final filterTab = find.widgetWithText(ChoiceChip, '전체 2');
+      final firstCard = find.text('42분');
+      final recommendationTop = tester.getTopLeft(recommendation).dy;
+      final filterTop = tester.getTopLeft(filterTab).dy;
+      final cardTop = tester.getTopLeft(firstCard).dy;
+      await tester.drag(firstCard, const Offset(0, -70));
+      await tester.pumpAndSettle();
+      expect(tester.getTopLeft(recommendation).dy, recommendationTop);
+      expect(tester.getTopLeft(filterTab).dy, filterTop);
+      expect(tester.getTopLeft(firstCard).dy, lessThan(cardTop));
+      tester.view.physicalSize = fullSize;
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('M5107 이용 1'));
+      await tester.pumpAndSettle();
+      expect(find.text('정류장 A'), findsOneWidget);
+      expect(find.text('47분'), findsNothing);
+      await tester.tap(firstCard);
+      await tester.pumpAndSettle();
+      expect(find.text('경로 상세'), findsOneWidget);
       await tester.pageBack();
+      await tester.pumpAndSettle();
+      await tester.tap(find.byType(CloseButton));
       await tester.pumpAndSettle();
       expect(tester.widget<TextField>(busInput).controller?.text, 'm5107');
       expect(resultsPanel, findsNothing);
       expect(gps, findsOneWidget);
+      await tester.enterText(input('출발지'), '');
+      await tester.pumpAndSettle();
+      expect(pins, {'route-destination': '목적지'});
+      await tester.enterText(input('목적지'), '');
+      await tester.pumpAndSettle();
+      expect(pins, isEmpty);
       await tester.tap(find.text('내 경로').hitTestable().first);
       await tester.pumpAndSettle();
 
       expect(sheetController.currentState, GlassSheetState.hidden);
-      expect(searchBar, findsNothing);
+      expect(searchBar.hitTestable(), findsNothing);
       expect(settings, findsOneWidget);
       expect(find.text('거슬렁'), findsOneWidget);
       expect(tester.element(appBar), same(appBarElement));
@@ -324,6 +532,8 @@ void main() {
       });
 
       await tester.pumpWidget(const MaterialApp(home: MyRoutesScreen()));
+      await tester.tap(find.widgetWithText(GlassChip, '퇴근길'));
+      await tester.pumpAndSettle();
       final map = tester.widget<KakaoMap>(find.byType(KakaoMap));
       final gps = find.byWidgetPredicate(
         (widget) =>

@@ -1,0 +1,34 @@
+{
+  "search": {
+    "method": "POST",
+    "path": "/api/v1/journeys/search",
+    "body": {
+      "origin": {
+        "name": "출발지 예시",
+        "longitude": 127.0519833,
+        "latitude": 37.2779667
+      },
+      "destination": {
+        "name": "목적지 예시",
+        "longitude": 126.9727333,
+        "latitude": 37.55515
+      },
+      "mode": "all",
+      "departure_at": "2026-11-26T08:00:00+09:00",
+      "sort_mode": "recommended",
+      "preferred_express_bus": "5500-2"
+    }
+  },
+  "candidate_detail": {
+    "method": "GET",
+    "path": "/api/v1/journeys/{searchId}/candidates/{candidateId}",
+    "path_parameters_example": {
+      "searchId": "f97b9e2bcde6ec5e6ab4007f2619ff28",
+      "candidateId": "odsay-0"
+    },
+    "path_parameters_from_search_response": {
+      "searchId": "$.search_id",
+      "candidateId": "$.candidates[0].candidate_id"
+    }
+  }
+}

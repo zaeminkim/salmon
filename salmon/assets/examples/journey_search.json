@@ -1,0 +1,3089 @@
+{
+  "search_id": "f97b9e2bcde6ec5e6ab4007f2619ff28",
+  "search_expires_at": "2026-11-27T15:12:49.452579576Z",
+  "data_origin": "odsay_live",
+  "origin": {
+    "name": "출발지 예시",
+    "longitude": 127.0519833,
+    "latitude": 37.2779667
+  },
+  "destination": {
+    "name": "목적지 예시",
+    "longitude": 126.9727333,
+    "latitude": 37.55515
+  },
+  "query": {
+    "departure_at": "2026-11-26T08:00:00+09:00",
+    "sort_mode": "recommended",
+    "preferred_express_bus": "5500-2",
+    "origin_name": "출발지 예시",
+    "destination_name": "목적지 예시",
+    "start": {
+      "lon": 127.0519833,
+      "lat": 37.2779667
+    },
+    "end": {
+      "lon": 126.9727333,
+      "lat": 37.55515
+    },
+    "mode": "all",
+    "reference_date": "",
+    "analysis_set_id": ""
+  },
+  "filters": [
+    {
+      "key": "all",
+      "label": "전체",
+      "count": 8,
+      "candidate_ids": [
+        "odsay-0",
+        "odsay-3",
+        "odsay-2",
+        "odsay-6",
+        "odsay-4",
+        "odsay-1",
+        "odsay-7",
+        "odsay-5"
+      ]
+    },
+    {
+      "key": "preferred_express_bus",
+      "label": "5500-2 이용",
+      "count": 0,
+      "candidate_ids": []
+    },
+    {
+      "key": "bus",
+      "label": "버스",
+      "count": 3,
+      "candidate_ids": [
+        "odsay-0",
+        "odsay-3",
+        "odsay-1"
+      ]
+    },
+    {
+      "key": "subway",
+      "label": "지하철",
+      "count": 0,
+      "candidate_ids": []
+    },
+    {
+      "key": "mixed",
+      "label": "버스+지하철",
+      "count": 5,
+      "candidate_ids": [
+        "odsay-2",
+        "odsay-6",
+        "odsay-4",
+        "odsay-7",
+        "odsay-5"
+      ]
+    }
+  ],
+  "candidates": [
+    {
+      "candidate_id": "odsay-0",
+      "path_index": 0,
+      "recommendation_rank": 1,
+      "provider_rank": 1,
+      "source": "odsay",
+      "seat_risk_status": "low",
+      "max_low_seat_probability": 0.089,
+      "min_remaining_seats": 12,
+      "recommendation_reason": "좌석 여유 우수 (저좌석 확률 11.3%p 감소, 최단 대비 +0.0분)",
+      "uses_preferred_express_bus": false,
+      "alternative_for": [
+        {
+          "original_candidate_id": "odsay-1",
+          "additional_travel_minutes": -24,
+          "low_seat_reduction_pp": 11.3
+        }
+      ],
+      "summary": {
+        "total_minutes": 65,
+        "departure_at": "2026-11-26T08:00:00+09:00",
+        "arrival_at": "2026-11-26T09:05:00+09:00",
+        "walking_minutes": 2,
+        "transfer_count": 0,
+        "time_source": "odsay_estimated"
+      },
+      "segments": [
+        {
+          "leg_index": 0,
+          "type": "walk",
+          "duration_minutes": 1,
+          "route_color": "#BDBDBD",
+          "estimated_start_at": "2026-11-26T08:00:00+09:00",
+          "estimated_end_at": "2026-11-26T08:01:00+09:00",
+          "estimated_boarding_at": null,
+          "seat_prediction": null
+        },
+        {
+          "leg_index": 1,
+          "type": "bus",
+          "duration_minutes": 63,
+          "route_id": "234001317",
+          "route_name": "M5121",
+          "route_color": "#E53935",
+          "boarding_station": {
+            "name": "소화초등학교",
+            "id": "203000294",
+            "local_id": "203000294",
+            "ars_id": "04286",
+            "longitude": 127.052068,
+            "latitude": 37.277925
+          },
+          "alighting_station": {
+            "name": "서울역버스환승센터(6번승강장)",
+            "id": "101000006",
+            "local_id": "101000006",
+            "ars_id": "02006",
+            "longitude": 126.972796,
+            "latitude": 37.555441
+          },
+          "estimated_start_at": "2026-11-26T08:01:00+09:00",
+          "estimated_end_at": "2026-11-26T09:04:00+09:00",
+          "estimated_boarding_at": "2026-11-26T08:01:00+09:00",
+          "seat_prediction": {
+            "status": "available",
+            "estimated_boarding_at": "2026-11-26T08:01:00+09:00",
+            "estimated_remaining_seats": 12,
+            "low_seat_probability": 0.089,
+            "model_type": "m5121_v2",
+            "model_version": "seat-per-route-v1"
+          }
+        },
+        {
+          "leg_index": 2,
+          "type": "walk",
+          "duration_minutes": 1,
+          "route_color": "#BDBDBD",
+          "estimated_start_at": "2026-11-26T09:04:00+09:00",
+          "estimated_end_at": "2026-11-26T09:05:00+09:00",
+          "estimated_boarding_at": null,
+          "seat_prediction": null
+        }
+      ],
+      "seat_predictions": [
+        {
+          "leg_index": 1,
+          "route_id": "234001317",
+          "route_name": "M5121",
+          "station_id": "203000294",
+          "station_name": "소화초등학교",
+          "direction": "to:101000006",
+          "estimated_boarding_at": "2026-11-26T08:01:00+09:00",
+          "estimated_remaining_seats": 12,
+          "low_seat_probability": 0.089,
+          "model_type": "m5121_v2",
+          "model_version": "seat-per-route-v1",
+          "status": "available"
+        }
+      ],
+      "evaluation": {
+        "method": "travel_time_only_v1",
+        "travel_minutes": 65,
+        "transfers": 0,
+        "walking_minutes": 2,
+        "contains_m5121_option": true,
+        "congestion_status": "unknown",
+        "congestion_references": [
+          {
+            "leg_index": 1,
+            "option_index": 0,
+            "type": "bus",
+            "bus_no": "M5121",
+            "odsay_route_id": "10730",
+            "status": "unknown",
+            "reason": "no_verified_boarding_statistics",
+            "mean_cgst": null,
+            "p90": null,
+            "observation_count": null,
+            "numeric_count": null,
+            "boarding_visit_id": null,
+            "alighting_visit_id": null,
+            "reference_date": null,
+            "reference_tzon": null,
+            "policy": null
+          }
+        ]
+      },
+      "provider_index": 0,
+      "path_type": 2,
+      "provider_total_minutes": 65,
+      "derived_transfer_count": 0,
+      "transfer_count_method": "max(0, transit subPath count - 1); lane alternatives are not transfers",
+      "provider_bus_count": 1,
+      "provider_subway_count": 0,
+      "contains_m5121_option": true,
+      "legs": [
+        {
+          "leg_index": 0,
+          "type": "walk",
+          "duration_minutes": 1,
+          "provider_segment": {
+            "distance": 9,
+            "trafficType": 3,
+            "sectionTime": 1
+          }
+        },
+        {
+          "leg_index": 1,
+          "type": "bus",
+          "duration_minutes": 63,
+          "boarding": {
+            "odsay_station_id": "80375",
+            "local_station_id": "203000294",
+            "provider_code": 2,
+            "name": "소화초등학교",
+            "ars_id": "04286",
+            "lon": 127.052068,
+            "lat": 37.277925
+          },
+          "alighting": {
+            "odsay_station_id": "104664",
+            "local_station_id": "101000006",
+            "provider_code": 2,
+            "name": "서울역버스환승센터(6번승강장)",
+            "ars_id": "02006",
+            "lon": 126.972796,
+            "lat": 37.555441
+          },
+          "provider_segment": {
+            "distance": 44767,
+            "trafficType": 2,
+            "sectionTime": 63,
+            "lane": [
+              {
+                "type": 14,
+                "busNo": "M5121",
+                "busID": "10730",
+                "busLocalBlID": "234001317",
+                "busProviderCode": 2
+              }
+            ],
+            "startID": "80375",
+            "endID": "104664",
+            "startLocalStationID": "203000294",
+            "endLocalStationID": "101000006",
+            "startStationProviderCode": 2,
+            "endStationProviderCode": 2,
+            "startName": "소화초등학교",
+            "endName": "서울역버스환승센터(6번승강장)",
+            "startArsID": "04286",
+            "endArsID": "02006",
+            "startX": 127.052068,
+            "startY": 37.277925,
+            "endX": 126.972796,
+            "endY": 37.555441
+          },
+          "bus_options": [
+            {
+              "seat_prediction": {
+                "status": "available",
+                "estimated_boarding_at": "2026-11-26T08:01:00+09:00",
+                "estimated_remaining_seats": 12,
+                "low_seat_probability": 0.089,
+                "model_type": "m5121_v2",
+                "model_version": "seat-per-route-v1"
+              },
+              "congestion_status": "not_provided",
+              "congestion_reason": "basic_transit_search",
+              "lane": {
+                "type": 14,
+                "busNo": "M5121",
+                "busID": "10730",
+                "busLocalBlID": "234001317",
+                "busProviderCode": 2
+              },
+              "m5121_candidate": true,
+              "mapping": {
+                "status": "route_mapped",
+                "boarding_status": "matched_declared_gbis_local_id",
+                "alighting_status": "matched_declared_gbis_local_id",
+                "internal_route_id": 1,
+                "boarding_visit_id": 6,
+                "alighting_visit_id": 31,
+                "notes": [
+                  "reference_only_not_boarding_probability",
+                  "boarding_permission_unverified",
+                  "historical_mapping_status_unverified",
+                  "ODsay_stationID_is_not_GBIS_stationId"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "leg_index": 2,
+          "type": "walk",
+          "duration_minutes": 1,
+          "provider_segment": {
+            "distance": 33,
+            "trafficType": 3,
+            "sectionTime": 1
+          }
+        }
+      ]
+    },
+    {
+      "candidate_id": "odsay-3",
+      "path_index": 3,
+      "recommendation_rank": 2,
+      "provider_rank": 4,
+      "source": "odsay",
+      "seat_risk_status": "unavailable",
+      "recommendation_reason": "장시간 우회 경로 (최단 대비 +24.0분)",
+      "uses_preferred_express_bus": false,
+      "summary": {
+        "total_minutes": 89,
+        "departure_at": "2026-11-26T08:00:00+09:00",
+        "arrival_at": "2026-11-26T09:29:00+09:00",
+        "walking_minutes": 10,
+        "transfer_count": 0,
+        "time_source": "odsay_estimated"
+      },
+      "segments": [
+        {
+          "leg_index": 0,
+          "type": "walk",
+          "duration_minutes": 9,
+          "route_color": "#BDBDBD",
+          "estimated_start_at": "2026-11-26T08:00:00+09:00",
+          "estimated_end_at": "2026-11-26T08:09:00+09:00",
+          "estimated_boarding_at": null,
+          "seat_prediction": null
+        },
+        {
+          "leg_index": 1,
+          "type": "bus",
+          "duration_minutes": 79,
+          "route_id": "200000297",
+          "route_name": "8800(예약)(평일)",
+          "route_color": "#E53935",
+          "boarding_station": {
+            "name": "구법원사거리",
+            "id": "203000068",
+            "local_id": "203000068",
+            "ars_id": "04042",
+            "longitude": 127.04727,
+            "latitude": 37.273922
+          },
+          "alighting_station": {
+            "name": "서울역버스환승센터(6번승강장)",
+            "id": "101000006",
+            "local_id": "101000006",
+            "ars_id": "02006",
+            "longitude": 126.972796,
+            "latitude": 37.555441
+          },
+          "estimated_start_at": "2026-11-26T08:09:00+09:00",
+          "estimated_end_at": "2026-11-26T09:28:00+09:00",
+          "estimated_boarding_at": "2026-11-26T08:09:00+09:00",
+          "seat_prediction": {
+            "status": "unavailable",
+            "estimated_boarding_at": "2026-11-26T08:09:00+09:00",
+            "estimated_remaining_seats": null,
+            "low_seat_probability": null,
+            "model_type": "unavailable",
+            "model_version": "seat-per-route-v1"
+          }
+        },
+        {
+          "leg_index": 2,
+          "type": "walk",
+          "duration_minutes": 1,
+          "route_color": "#BDBDBD",
+          "estimated_start_at": "2026-11-26T09:28:00+09:00",
+          "estimated_end_at": "2026-11-26T09:29:00+09:00",
+          "estimated_boarding_at": null,
+          "seat_prediction": null
+        }
+      ],
+      "seat_predictions": [
+        {
+          "leg_index": 1,
+          "route_id": "200000297",
+          "route_name": "8800(예약)(평일)",
+          "station_id": "203000068",
+          "station_name": "구법원사거리",
+          "direction": "to:101000006",
+          "estimated_boarding_at": "2026-11-26T08:09:00+09:00",
+          "estimated_remaining_seats": null,
+          "low_seat_probability": null,
+          "model_type": "unavailable",
+          "model_version": "seat-per-route-v1",
+          "status": "unavailable"
+        }
+      ],
+      "evaluation": {
+        "method": "travel_time_only_v1",
+        "travel_minutes": 89,
+        "transfers": 0,
+        "walking_minutes": 10,
+        "contains_m5121_option": false,
+        "congestion_status": "unknown",
+        "congestion_references": [
+          {
+            "leg_index": 1,
+            "option_index": 0,
+            "type": "bus",
+            "bus_no": "8800(예약)(평일)",
+            "odsay_route_id": "2802868",
+            "status": "unknown",
+            "reason": "no_verified_boarding_statistics",
+            "mean_cgst": null,
+            "p90": null,
+            "observation_count": null,
+            "numeric_count": null,
+            "boarding_visit_id": null,
+            "alighting_visit_id": null,
+            "reference_date": null,
+            "reference_tzon": null,
+            "policy": null
+          }
+        ]
+      },
+      "provider_index": 3,
+      "path_type": 2,
+      "provider_total_minutes": 89,
+      "derived_transfer_count": 0,
+      "transfer_count_method": "max(0, transit subPath count - 1); lane alternatives are not transfers",
+      "provider_bus_count": 1,
+      "provider_subway_count": 0,
+      "contains_m5121_option": false,
+      "legs": [
+        {
+          "leg_index": 0,
+          "type": "walk",
+          "duration_minutes": 9,
+          "provider_segment": {
+            "distance": 613,
+            "trafficType": 3,
+            "sectionTime": 9
+          }
+        },
+        {
+          "leg_index": 1,
+          "type": "bus",
+          "duration_minutes": 79,
+          "boarding": {
+            "odsay_station_id": "184722",
+            "local_station_id": "203000068",
+            "provider_code": 2,
+            "name": "구법원사거리",
+            "ars_id": "04042",
+            "lon": 127.04727,
+            "lat": 37.273922
+          },
+          "alighting": {
+            "odsay_station_id": "104664",
+            "local_station_id": "101000006",
+            "provider_code": 2,
+            "name": "서울역버스환승센터(6번승강장)",
+            "ars_id": "02006",
+            "lon": 126.972796,
+            "lat": 37.555441
+          },
+          "provider_segment": {
+            "distance": 46385,
+            "trafficType": 2,
+            "sectionTime": 79,
+            "lane": [
+              {
+                "type": 4,
+                "busNo": "8800(예약)(평일)",
+                "busID": "2802868",
+                "busLocalBlID": "200000297",
+                "busProviderCode": 2
+              }
+            ],
+            "startID": "184722",
+            "endID": "104664",
+            "startLocalStationID": "203000068",
+            "endLocalStationID": "101000006",
+            "startStationProviderCode": 2,
+            "endStationProviderCode": 2,
+            "startName": "구법원사거리",
+            "endName": "서울역버스환승센터(6번승강장)",
+            "startArsID": "04042",
+            "endArsID": "02006",
+            "startX": 127.04727,
+            "startY": 37.273922,
+            "endX": 126.972796,
+            "endY": 37.555441
+          },
+          "bus_options": [
+            {
+              "seat_prediction": {
+                "status": "unavailable",
+                "estimated_boarding_at": "2026-11-26T08:09:00+09:00",
+                "estimated_remaining_seats": null,
+                "low_seat_probability": null,
+                "model_type": "unavailable",
+                "model_version": "seat-per-route-v1"
+              },
+              "congestion_status": "not_provided",
+              "congestion_reason": "basic_transit_search",
+              "lane": {
+                "type": 4,
+                "busNo": "8800(예약)(평일)",
+                "busID": "2802868",
+                "busLocalBlID": "200000297",
+                "busProviderCode": 2
+              },
+              "m5121_candidate": false,
+              "mapping": {
+                "status": "route_mapped",
+                "boarding_status": "not_checked",
+                "alighting_status": "not_checked",
+                "internal_route_id": 473,
+                "boarding_visit_id": null,
+                "alighting_visit_id": null,
+                "notes": [
+                  "reference_only_not_boarding_probability",
+                  "boarding_permission_unverified",
+                  "historical_mapping_status_unverified",
+                  "ODsay_stationID_is_not_GBIS_stationId"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "leg_index": 2,
+          "type": "walk",
+          "duration_minutes": 1,
+          "provider_segment": {
+            "distance": 33,
+            "trafficType": 3,
+            "sectionTime": 1
+          }
+        }
+      ]
+    },
+    {
+      "candidate_id": "odsay-2",
+      "path_index": 2,
+      "recommendation_rank": 3,
+      "provider_rank": 3,
+      "source": "odsay",
+      "seat_risk_status": "not_applicable",
+      "recommendation_reason": "장시간 우회 경로 (최단 대비 +25.0분)",
+      "uses_preferred_express_bus": false,
+      "alternative_for": [
+        {
+          "original_candidate_id": "odsay-1",
+          "additional_travel_minutes": 1,
+          "low_seat_reduction_pp": null
+        }
+      ],
+      "summary": {
+        "total_minutes": 90,
+        "departure_at": "2026-11-26T08:00:00+09:00",
+        "arrival_at": "2026-11-26T09:30:00+09:00",
+        "walking_minutes": 6,
+        "transfer_count": 1,
+        "time_source": "odsay_estimated"
+      },
+      "segments": [
+        {
+          "leg_index": 0,
+          "type": "walk",
+          "duration_minutes": 3,
+          "route_color": "#BDBDBD",
+          "estimated_start_at": "2026-11-26T08:00:00+09:00",
+          "estimated_end_at": "2026-11-26T08:03:00+09:00",
+          "estimated_boarding_at": null,
+          "seat_prediction": null
+        },
+        {
+          "leg_index": 1,
+          "type": "bus",
+          "duration_minutes": 23,
+          "route_id": "200000070",
+          "route_name": "11-1",
+          "route_color": "#43A047",
+          "boarding_station": {
+            "name": "수원정보과학고.원천중학교",
+            "id": "203000172",
+            "local_id": "203000172",
+            "ars_id": "04055",
+            "longitude": 127.050419,
+            "latitude": 37.276371
+          },
+          "alighting_station": {
+            "name": "수원역7번출구.AK플라자",
+            "id": "202000219",
+            "local_id": "202000219",
+            "ars_id": "03017",
+            "longitude": 127.000889,
+            "latitude": 37.267422
+          },
+          "estimated_start_at": "2026-11-26T08:03:00+09:00",
+          "estimated_end_at": "2026-11-26T08:26:00+09:00",
+          "estimated_boarding_at": "2026-11-26T08:03:00+09:00",
+          "seat_prediction": null
+        },
+        {
+          "leg_index": 2,
+          "type": "transfer_walk",
+          "duration_minutes": 2,
+          "route_color": "#757575",
+          "estimated_start_at": "2026-11-26T08:26:00+09:00",
+          "estimated_end_at": "2026-11-26T08:28:00+09:00",
+          "estimated_boarding_at": null,
+          "seat_prediction": null
+        },
+        {
+          "leg_index": 3,
+          "type": "subway",
+          "duration_minutes": 61,
+          "route_id": "1",
+          "route_name": "수도권 1호선",
+          "route_color": "#0052A4",
+          "boarding_station": {
+            "name": "수원",
+            "id": "184",
+            "longitude": 127.000036,
+            "latitude": 37.266252
+          },
+          "alighting_station": {
+            "name": "서울역",
+            "id": "133",
+            "longitude": 126.972314,
+            "latitude": 37.555942
+          },
+          "estimated_start_at": "2026-11-26T08:28:00+09:00",
+          "estimated_end_at": "2026-11-26T09:29:00+09:00",
+          "estimated_boarding_at": "2026-11-26T08:28:00+09:00",
+          "seat_prediction": null
+        },
+        {
+          "leg_index": 4,
+          "type": "walk",
+          "duration_minutes": 1,
+          "route_color": "#BDBDBD",
+          "estimated_start_at": "2026-11-26T09:29:00+09:00",
+          "estimated_end_at": "2026-11-26T09:30:00+09:00",
+          "estimated_boarding_at": null,
+          "seat_prediction": null
+        }
+      ],
+      "evaluation": {
+        "method": "travel_time_only_v1",
+        "travel_minutes": 90,
+        "transfers": 1,
+        "walking_minutes": 6,
+        "contains_m5121_option": false,
+        "congestion_status": "unknown",
+        "congestion_references": [
+          {
+            "leg_index": 1,
+            "option_index": 0,
+            "type": "bus",
+            "bus_no": "11-1",
+            "odsay_route_id": "9556",
+            "status": "unknown",
+            "reason": "no_verified_boarding_statistics",
+            "mean_cgst": null,
+            "p90": null,
+            "observation_count": null,
+            "numeric_count": null,
+            "boarding_visit_id": null,
+            "alighting_visit_id": null,
+            "reference_date": null,
+            "reference_tzon": null,
+            "policy": null
+          },
+          {
+            "leg_index": 3,
+            "option_index": 0,
+            "type": "subway",
+            "line_name": "수도권 1호선",
+            "subway_code": 1,
+            "status": "unknown",
+            "reason": "no_verified_boarding_statistics",
+            "mean_cgst": null,
+            "p90": null,
+            "observation_count": null,
+            "numeric_count": null,
+            "boarding_visit_id": null,
+            "alighting_visit_id": null,
+            "reference_date": null,
+            "reference_tzon": null,
+            "policy": null
+          }
+        ]
+      },
+      "provider_index": 2,
+      "path_type": 3,
+      "provider_total_minutes": 90,
+      "derived_transfer_count": 1,
+      "transfer_count_method": "max(0, transit subPath count - 1); lane alternatives are not transfers",
+      "provider_bus_count": 1,
+      "provider_subway_count": 1,
+      "contains_m5121_option": false,
+      "legs": [
+        {
+          "leg_index": 0,
+          "type": "walk",
+          "duration_minutes": 3,
+          "provider_segment": {
+            "distance": 225,
+            "trafficType": 3,
+            "sectionTime": 3
+          }
+        },
+        {
+          "leg_index": 1,
+          "type": "bus",
+          "duration_minutes": 23,
+          "boarding": {
+            "odsay_station_id": "118713",
+            "local_station_id": "203000172",
+            "provider_code": 2,
+            "name": "수원정보과학고.원천중학교",
+            "ars_id": "04055",
+            "lon": 127.050419,
+            "lat": 37.276371
+          },
+          "alighting": {
+            "odsay_station_id": "184320",
+            "local_station_id": "202000219",
+            "provider_code": 2,
+            "name": "수원역7번출구.AK플라자",
+            "ars_id": "03017",
+            "lon": 127.000889,
+            "lat": 37.267422
+          },
+          "provider_segment": {
+            "distance": 5636,
+            "trafficType": 2,
+            "sectionTime": 23,
+            "lane": [
+              {
+                "type": 1,
+                "busNo": "11-1",
+                "busID": "9556",
+                "busLocalBlID": "200000070",
+                "busProviderCode": 2
+              }
+            ],
+            "startID": "118713",
+            "endID": "184320",
+            "startLocalStationID": "203000172",
+            "endLocalStationID": "202000219",
+            "startStationProviderCode": 2,
+            "endStationProviderCode": 2,
+            "startName": "수원정보과학고.원천중학교",
+            "endName": "수원역7번출구.AK플라자",
+            "startArsID": "04055",
+            "endArsID": "03017",
+            "startX": 127.050419,
+            "startY": 37.276371,
+            "endX": 127.000889,
+            "endY": 37.267422
+          },
+          "bus_options": [
+            {
+              "congestion_status": "not_provided",
+              "congestion_reason": "basic_transit_search",
+              "lane": {
+                "type": 1,
+                "busNo": "11-1",
+                "busID": "9556",
+                "busLocalBlID": "200000070",
+                "busProviderCode": 2
+              },
+              "m5121_candidate": false,
+              "mapping": {
+                "status": "route_mapped",
+                "boarding_status": "not_checked",
+                "alighting_status": "not_checked",
+                "internal_route_id": 2424,
+                "boarding_visit_id": null,
+                "alighting_visit_id": null,
+                "notes": [
+                  "reference_only_not_boarding_probability",
+                  "boarding_permission_unverified",
+                  "historical_mapping_status_unverified",
+                  "ODsay_stationID_is_not_GBIS_stationId"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "leg_index": 2,
+          "type": "walk",
+          "duration_minutes": 2,
+          "provider_segment": {
+            "distance": 150,
+            "trafficType": 3,
+            "sectionTime": 2
+          }
+        },
+        {
+          "leg_index": 3,
+          "type": "subway",
+          "duration_minutes": 61,
+          "boarding": {
+            "odsay_station_id": "184",
+            "name": "수원",
+            "lon": 127.000036,
+            "lat": 37.266252
+          },
+          "alighting": {
+            "odsay_station_id": "133",
+            "name": "서울역",
+            "lon": 126.972314,
+            "lat": 37.555942
+          },
+          "provider_segment": {
+            "distance": 41500,
+            "trafficType": 1,
+            "sectionTime": 61,
+            "lane": [
+              {
+                "name": "수도권 1호선",
+                "subwayCode": 1
+              }
+            ],
+            "startID": "184",
+            "endID": "133",
+            "startName": "수원",
+            "endName": "서울역",
+            "startX": 127.000036,
+            "startY": 37.266252,
+            "endX": 126.972314,
+            "endY": 37.555942
+          }
+        },
+        {
+          "leg_index": 4,
+          "type": "walk",
+          "duration_minutes": 1,
+          "provider_segment": {
+            "distance": 95,
+            "trafficType": 3,
+            "sectionTime": 1
+          }
+        }
+      ]
+    },
+    {
+      "candidate_id": "odsay-6",
+      "path_index": 6,
+      "recommendation_rank": 4,
+      "provider_rank": 7,
+      "source": "odsay",
+      "seat_risk_status": "not_applicable",
+      "recommendation_reason": "장시간 우회 경로 (최단 대비 +22.0분)",
+      "uses_preferred_express_bus": false,
+      "alternative_for": [
+        {
+          "original_candidate_id": "odsay-1",
+          "additional_travel_minutes": -2,
+          "low_seat_reduction_pp": null
+        }
+      ],
+      "summary": {
+        "total_minutes": 87,
+        "departure_at": "2026-11-26T08:00:00+09:00",
+        "arrival_at": "2026-11-26T09:27:00+09:00",
+        "walking_minutes": 8,
+        "transfer_count": 2,
+        "time_source": "odsay_estimated"
+      },
+      "segments": [
+        {
+          "leg_index": 0,
+          "type": "walk",
+          "duration_minutes": 3,
+          "route_color": "#BDBDBD",
+          "estimated_start_at": "2026-11-26T08:00:00+09:00",
+          "estimated_end_at": "2026-11-26T08:03:00+09:00",
+          "estimated_boarding_at": null,
+          "seat_prediction": null
+        },
+        {
+          "leg_index": 1,
+          "type": "bus",
+          "duration_minutes": 23,
+          "route_id": "200000070",
+          "route_name": "11-1",
+          "route_color": "#43A047",
+          "boarding_station": {
+            "name": "수원정보과학고.원천중학교",
+            "id": "203000172",
+            "local_id": "203000172",
+            "ars_id": "04055",
+            "longitude": 127.050419,
+            "latitude": 37.276371
+          },
+          "alighting_station": {
+            "name": "수원역7번출구.AK플라자",
+            "id": "202000219",
+            "local_id": "202000219",
+            "ars_id": "03017",
+            "longitude": 127.000889,
+            "latitude": 37.267422
+          },
+          "estimated_start_at": "2026-11-26T08:03:00+09:00",
+          "estimated_end_at": "2026-11-26T08:26:00+09:00",
+          "estimated_boarding_at": "2026-11-26T08:03:00+09:00",
+          "seat_prediction": null
+        },
+        {
+          "leg_index": 2,
+          "type": "transfer_walk",
+          "duration_minutes": 2,
+          "route_color": "#757575",
+          "estimated_start_at": "2026-11-26T08:26:00+09:00",
+          "estimated_end_at": "2026-11-26T08:28:00+09:00",
+          "estimated_boarding_at": null,
+          "seat_prediction": null
+        },
+        {
+          "leg_index": 3,
+          "type": "subway",
+          "duration_minutes": 17,
+          "route_id": "1",
+          "route_name": "수도권 1호선",
+          "route_color": "#0052A4",
+          "boarding_station": {
+            "name": "수원",
+            "id": "184",
+            "longitude": 127.000036,
+            "latitude": 37.266252
+          },
+          "alighting_station": {
+            "name": "금정",
+            "id": "179",
+            "longitude": 126.943297,
+            "latitude": 37.372366
+          },
+          "estimated_start_at": "2026-11-26T08:28:00+09:00",
+          "estimated_end_at": "2026-11-26T08:45:00+09:00",
+          "estimated_boarding_at": "2026-11-26T08:28:00+09:00",
+          "seat_prediction": null
+        },
+        {
+          "leg_index": 4,
+          "type": "transfer_walk",
+          "duration_minutes": 0,
+          "route_color": "#757575",
+          "estimated_start_at": "2026-11-26T08:45:00+09:00",
+          "estimated_end_at": "2026-11-26T08:45:00+09:00",
+          "estimated_boarding_at": null,
+          "seat_prediction": null
+        },
+        {
+          "leg_index": 5,
+          "type": "subway",
+          "duration_minutes": 39,
+          "route_id": "4",
+          "route_name": "수도권 4호선",
+          "route_color": "#00A5DE",
+          "boarding_station": {
+            "name": "금정",
+            "id": "443",
+            "longitude": 126.943512,
+            "latitude": 37.37235
+          },
+          "alighting_station": {
+            "name": "서울역",
+            "id": "426",
+            "longitude": 126.972709,
+            "latitude": 37.553512
+          },
+          "estimated_start_at": "2026-11-26T08:45:00+09:00",
+          "estimated_end_at": "2026-11-26T09:24:00+09:00",
+          "estimated_boarding_at": "2026-11-26T08:45:00+09:00",
+          "seat_prediction": null
+        },
+        {
+          "leg_index": 6,
+          "type": "walk",
+          "duration_minutes": 3,
+          "route_color": "#BDBDBD",
+          "estimated_start_at": "2026-11-26T09:24:00+09:00",
+          "estimated_end_at": "2026-11-26T09:27:00+09:00",
+          "estimated_boarding_at": null,
+          "seat_prediction": null
+        }
+      ],
+      "evaluation": {
+        "method": "travel_time_only_v1",
+        "travel_minutes": 87,
+        "transfers": 2,
+        "walking_minutes": 8,
+        "contains_m5121_option": false,
+        "congestion_status": "unknown",
+        "congestion_references": [
+          {
+            "leg_index": 1,
+            "option_index": 0,
+            "type": "bus",
+            "bus_no": "11-1",
+            "odsay_route_id": "9556",
+            "status": "unknown",
+            "reason": "no_verified_boarding_statistics",
+            "mean_cgst": null,
+            "p90": null,
+            "observation_count": null,
+            "numeric_count": null,
+            "boarding_visit_id": null,
+            "alighting_visit_id": null,
+            "reference_date": null,
+            "reference_tzon": null,
+            "policy": null
+          },
+          {
+            "leg_index": 3,
+            "option_index": 0,
+            "type": "subway",
+            "line_name": "수도권 1호선",
+            "subway_code": 1,
+            "status": "unknown",
+            "reason": "no_verified_boarding_statistics",
+            "mean_cgst": null,
+            "p90": null,
+            "observation_count": null,
+            "numeric_count": null,
+            "boarding_visit_id": null,
+            "alighting_visit_id": null,
+            "reference_date": null,
+            "reference_tzon": null,
+            "policy": null
+          },
+          {
+            "leg_index": 5,
+            "option_index": 0,
+            "type": "subway",
+            "line_name": "수도권 4호선",
+            "subway_code": 4,
+            "status": "unknown",
+            "reason": "no_verified_boarding_statistics",
+            "mean_cgst": null,
+            "p90": null,
+            "observation_count": null,
+            "numeric_count": null,
+            "boarding_visit_id": null,
+            "alighting_visit_id": null,
+            "reference_date": null,
+            "reference_tzon": null,
+            "policy": null
+          }
+        ]
+      },
+      "provider_index": 6,
+      "path_type": 3,
+      "provider_total_minutes": 87,
+      "derived_transfer_count": 2,
+      "transfer_count_method": "max(0, transit subPath count - 1); lane alternatives are not transfers",
+      "provider_bus_count": 1,
+      "provider_subway_count": 2,
+      "contains_m5121_option": false,
+      "legs": [
+        {
+          "leg_index": 0,
+          "type": "walk",
+          "duration_minutes": 3,
+          "provider_segment": {
+            "distance": 225,
+            "trafficType": 3,
+            "sectionTime": 3
+          }
+        },
+        {
+          "leg_index": 1,
+          "type": "bus",
+          "duration_minutes": 23,
+          "boarding": {
+            "odsay_station_id": "118713",
+            "local_station_id": "203000172",
+            "provider_code": 2,
+            "name": "수원정보과학고.원천중학교",
+            "ars_id": "04055",
+            "lon": 127.050419,
+            "lat": 37.276371
+          },
+          "alighting": {
+            "odsay_station_id": "184320",
+            "local_station_id": "202000219",
+            "provider_code": 2,
+            "name": "수원역7번출구.AK플라자",
+            "ars_id": "03017",
+            "lon": 127.000889,
+            "lat": 37.267422
+          },
+          "provider_segment": {
+            "distance": 5636,
+            "trafficType": 2,
+            "sectionTime": 23,
+            "lane": [
+              {
+                "type": 1,
+                "busNo": "11-1",
+                "busID": "9556",
+                "busLocalBlID": "200000070",
+                "busProviderCode": 2
+              }
+            ],
+            "startID": "118713",
+            "endID": "184320",
+            "startLocalStationID": "203000172",
+            "endLocalStationID": "202000219",
+            "startStationProviderCode": 2,
+            "endStationProviderCode": 2,
+            "startName": "수원정보과학고.원천중학교",
+            "endName": "수원역7번출구.AK플라자",
+            "startArsID": "04055",
+            "endArsID": "03017",
+            "startX": 127.050419,
+            "startY": 37.276371,
+            "endX": 127.000889,
+            "endY": 37.267422
+          },
+          "bus_options": [
+            {
+              "congestion_status": "not_provided",
+              "congestion_reason": "basic_transit_search",
+              "lane": {
+                "type": 1,
+                "busNo": "11-1",
+                "busID": "9556",
+                "busLocalBlID": "200000070",
+                "busProviderCode": 2
+              },
+              "m5121_candidate": false,
+              "mapping": {
+                "status": "route_mapped",
+                "boarding_status": "not_checked",
+                "alighting_status": "not_checked",
+                "internal_route_id": 2424,
+                "boarding_visit_id": null,
+                "alighting_visit_id": null,
+                "notes": [
+                  "reference_only_not_boarding_probability",
+                  "boarding_permission_unverified",
+                  "historical_mapping_status_unverified",
+                  "ODsay_stationID_is_not_GBIS_stationId"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "leg_index": 2,
+          "type": "walk",
+          "duration_minutes": 2,
+          "provider_segment": {
+            "distance": 150,
+            "trafficType": 3,
+            "sectionTime": 2
+          }
+        },
+        {
+          "leg_index": 3,
+          "type": "subway",
+          "duration_minutes": 17,
+          "boarding": {
+            "odsay_station_id": "184",
+            "name": "수원",
+            "lon": 127.000036,
+            "lat": 37.266252
+          },
+          "alighting": {
+            "odsay_station_id": "179",
+            "name": "금정",
+            "lon": 126.943297,
+            "lat": 37.372366
+          },
+          "provider_segment": {
+            "distance": 14000,
+            "trafficType": 1,
+            "sectionTime": 17,
+            "lane": [
+              {
+                "name": "수도권 1호선",
+                "subwayCode": 1
+              }
+            ],
+            "startID": "184",
+            "endID": "179",
+            "startName": "수원",
+            "endName": "금정",
+            "startX": 127.000036,
+            "startY": 37.266252,
+            "endX": 126.943297,
+            "endY": 37.372366
+          }
+        },
+        {
+          "leg_index": 4,
+          "type": "walk",
+          "duration_minutes": 0,
+          "provider_segment": {
+            "distance": 0,
+            "trafficType": 3,
+            "sectionTime": 0
+          }
+        },
+        {
+          "leg_index": 5,
+          "type": "subway",
+          "duration_minutes": 39,
+          "boarding": {
+            "odsay_station_id": "443",
+            "name": "금정",
+            "lon": 126.943512,
+            "lat": 37.37235
+          },
+          "alighting": {
+            "odsay_station_id": "426",
+            "name": "서울역",
+            "lon": 126.972709,
+            "lat": 37.553512
+          },
+          "provider_segment": {
+            "distance": 25800,
+            "trafficType": 1,
+            "sectionTime": 39,
+            "lane": [
+              {
+                "name": "수도권 4호선",
+                "subwayCode": 4
+              }
+            ],
+            "startID": "443",
+            "endID": "426",
+            "startName": "금정",
+            "endName": "서울역",
+            "startX": 126.943512,
+            "startY": 37.37235,
+            "endX": 126.972709,
+            "endY": 37.553512
+          }
+        },
+        {
+          "leg_index": 6,
+          "type": "walk",
+          "duration_minutes": 3,
+          "provider_segment": {
+            "distance": 182,
+            "trafficType": 3,
+            "sectionTime": 3
+          }
+        }
+      ]
+    },
+    {
+      "candidate_id": "odsay-4",
+      "path_index": 4,
+      "recommendation_rank": 5,
+      "provider_rank": 5,
+      "source": "odsay",
+      "seat_risk_status": "not_applicable",
+      "recommendation_reason": "장시간 우회 경로 (최단 대비 +27.0분)",
+      "uses_preferred_express_bus": false,
+      "alternative_for": [
+        {
+          "original_candidate_id": "odsay-1",
+          "additional_travel_minutes": 3,
+          "low_seat_reduction_pp": null
+        }
+      ],
+      "summary": {
+        "total_minutes": 92,
+        "departure_at": "2026-11-26T08:00:00+09:00",
+        "arrival_at": "2026-11-26T09:32:00+09:00",
+        "walking_minutes": 10,
+        "transfer_count": 1,
+        "time_source": "odsay_estimated"
+      },
+      "segments": [
+        {
+          "leg_index": 0,
+          "type": "walk",
+          "duration_minutes": 7,
+          "route_color": "#BDBDBD",
+          "estimated_start_at": "2026-11-26T08:00:00+09:00",
+          "estimated_end_at": "2026-11-26T08:07:00+09:00",
+          "estimated_boarding_at": null,
+          "seat_prediction": null
+        },
+        {
+          "leg_index": 1,
+          "type": "bus",
+          "duration_minutes": 21,
+          "route_id": "200000099",
+          "route_name": "37",
+          "route_color": "#43A047",
+          "boarding_station": {
+            "name": "KT동수원지사",
+            "id": "203000069",
+            "local_id": "203000069",
+            "ars_id": "04056",
+            "longitude": 127.050984,
+            "latitude": 37.273592
+          },
+          "alighting_station": {
+            "name": "수원역7번출구.AK플라자",
+            "id": "202000219",
+            "local_id": "202000219",
+            "ars_id": "03017",
+            "longitude": 127.000889,
+            "latitude": 37.267422
+          },
+          "estimated_start_at": "2026-11-26T08:07:00+09:00",
+          "estimated_end_at": "2026-11-26T08:28:00+09:00",
+          "estimated_boarding_at": "2026-11-26T08:07:00+09:00",
+          "seat_prediction": null
+        },
+        {
+          "leg_index": 2,
+          "type": "transfer_walk",
+          "duration_minutes": 2,
+          "route_color": "#757575",
+          "estimated_start_at": "2026-11-26T08:28:00+09:00",
+          "estimated_end_at": "2026-11-26T08:30:00+09:00",
+          "estimated_boarding_at": null,
+          "seat_prediction": null
+        },
+        {
+          "leg_index": 3,
+          "type": "subway",
+          "duration_minutes": 61,
+          "route_id": "1",
+          "route_name": "수도권 1호선",
+          "route_color": "#0052A4",
+          "boarding_station": {
+            "name": "수원",
+            "id": "184",
+            "longitude": 127.000036,
+            "latitude": 37.266252
+          },
+          "alighting_station": {
+            "name": "서울역",
+            "id": "133",
+            "longitude": 126.972314,
+            "latitude": 37.555942
+          },
+          "estimated_start_at": "2026-11-26T08:30:00+09:00",
+          "estimated_end_at": "2026-11-26T09:31:00+09:00",
+          "estimated_boarding_at": "2026-11-26T08:30:00+09:00",
+          "seat_prediction": null
+        },
+        {
+          "leg_index": 4,
+          "type": "walk",
+          "duration_minutes": 1,
+          "route_color": "#BDBDBD",
+          "estimated_start_at": "2026-11-26T09:31:00+09:00",
+          "estimated_end_at": "2026-11-26T09:32:00+09:00",
+          "estimated_boarding_at": null,
+          "seat_prediction": null
+        }
+      ],
+      "evaluation": {
+        "method": "travel_time_only_v1",
+        "travel_minutes": 92,
+        "transfers": 1,
+        "walking_minutes": 10,
+        "contains_m5121_option": false,
+        "congestion_status": "unknown",
+        "congestion_references": [
+          {
+            "leg_index": 1,
+            "option_index": 0,
+            "type": "bus",
+            "bus_no": "37",
+            "odsay_route_id": "9559",
+            "status": "unknown",
+            "reason": "no_verified_boarding_statistics",
+            "mean_cgst": null,
+            "p90": null,
+            "observation_count": null,
+            "numeric_count": null,
+            "boarding_visit_id": null,
+            "alighting_visit_id": null,
+            "reference_date": null,
+            "reference_tzon": null,
+            "policy": null
+          },
+          {
+            "leg_index": 1,
+            "option_index": 1,
+            "type": "bus",
+            "bus_no": "10",
+            "odsay_route_id": "11000",
+            "status": "unknown",
+            "reason": "no_verified_boarding_statistics",
+            "mean_cgst": null,
+            "p90": null,
+            "observation_count": null,
+            "numeric_count": null,
+            "boarding_visit_id": null,
+            "alighting_visit_id": null,
+            "reference_date": null,
+            "reference_tzon": null,
+            "policy": null
+          },
+          {
+            "leg_index": 1,
+            "option_index": 2,
+            "type": "bus",
+            "bus_no": "10-2",
+            "odsay_route_id": "11191",
+            "status": "unknown",
+            "reason": "no_verified_boarding_statistics",
+            "mean_cgst": null,
+            "p90": null,
+            "observation_count": null,
+            "numeric_count": null,
+            "boarding_visit_id": null,
+            "alighting_visit_id": null,
+            "reference_date": null,
+            "reference_tzon": null,
+            "policy": null
+          },
+          {
+            "leg_index": 1,
+            "option_index": 3,
+            "type": "bus",
+            "bus_no": "10-5",
+            "odsay_route_id": "11002",
+            "status": "unknown",
+            "reason": "no_verified_boarding_statistics",
+            "mean_cgst": null,
+            "p90": null,
+            "observation_count": null,
+            "numeric_count": null,
+            "boarding_visit_id": null,
+            "alighting_visit_id": null,
+            "reference_date": null,
+            "reference_tzon": null,
+            "policy": null
+          },
+          {
+            "leg_index": 1,
+            "option_index": 4,
+            "type": "bus",
+            "bus_no": "15-1",
+            "odsay_route_id": "9662",
+            "status": "unknown",
+            "reason": "no_verified_boarding_statistics",
+            "mean_cgst": null,
+            "p90": null,
+            "observation_count": null,
+            "numeric_count": null,
+            "boarding_visit_id": null,
+            "alighting_visit_id": null,
+            "reference_date": null,
+            "reference_tzon": null,
+            "policy": null
+          },
+          {
+            "leg_index": 3,
+            "option_index": 0,
+            "type": "subway",
+            "line_name": "수도권 1호선",
+            "subway_code": 1,
+            "status": "unknown",
+            "reason": "no_verified_boarding_statistics",
+            "mean_cgst": null,
+            "p90": null,
+            "observation_count": null,
+            "numeric_count": null,
+            "boarding_visit_id": null,
+            "alighting_visit_id": null,
+            "reference_date": null,
+            "reference_tzon": null,
+            "policy": null
+          }
+        ]
+      },
+      "provider_index": 4,
+      "path_type": 3,
+      "provider_total_minutes": 92,
+      "derived_transfer_count": 1,
+      "transfer_count_method": "max(0, transit subPath count - 1); lane alternatives are not transfers",
+      "provider_bus_count": 1,
+      "provider_subway_count": 1,
+      "contains_m5121_option": false,
+      "legs": [
+        {
+          "leg_index": 0,
+          "type": "walk",
+          "duration_minutes": 7,
+          "provider_segment": {
+            "distance": 494,
+            "trafficType": 3,
+            "sectionTime": 7
+          }
+        },
+        {
+          "leg_index": 1,
+          "type": "bus",
+          "duration_minutes": 21,
+          "boarding": {
+            "odsay_station_id": "184721",
+            "local_station_id": "203000069",
+            "provider_code": 2,
+            "name": "KT동수원지사",
+            "ars_id": "04056",
+            "lon": 127.050984,
+            "lat": 37.273592
+          },
+          "alighting": {
+            "odsay_station_id": "184320",
+            "local_station_id": "202000219",
+            "provider_code": 2,
+            "name": "수원역7번출구.AK플라자",
+            "ars_id": "03017",
+            "lon": 127.000889,
+            "lat": 37.267422
+          },
+          "provider_segment": {
+            "distance": 5043,
+            "trafficType": 2,
+            "sectionTime": 21,
+            "lane": [
+              {
+                "type": 1,
+                "busNo": "37",
+                "busID": "9559",
+                "busLocalBlID": "200000099",
+                "busProviderCode": 2
+              },
+              {
+                "type": 1,
+                "busNo": "10",
+                "busID": "11000",
+                "busLocalBlID": "228000002",
+                "busProviderCode": 2
+              },
+              {
+                "type": 1,
+                "busNo": "10-2",
+                "busID": "11191",
+                "busLocalBlID": "228000255",
+                "busProviderCode": 2
+              },
+              {
+                "type": 1,
+                "busNo": "10-5",
+                "busID": "11002",
+                "busLocalBlID": "228000008",
+                "busProviderCode": 2
+              },
+              {
+                "type": 1,
+                "busNo": "15-1",
+                "busID": "9662",
+                "busLocalBlID": "200000152",
+                "busProviderCode": 2
+              }
+            ],
+            "startID": "184721",
+            "endID": "184320",
+            "startLocalStationID": "203000069",
+            "endLocalStationID": "202000219",
+            "startStationProviderCode": 2,
+            "endStationProviderCode": 2,
+            "startName": "KT동수원지사",
+            "endName": "수원역7번출구.AK플라자",
+            "startArsID": "04056",
+            "endArsID": "03017",
+            "startX": 127.050984,
+            "startY": 37.273592,
+            "endX": 127.000889,
+            "endY": 37.267422
+          },
+          "bus_options": [
+            {
+              "congestion_status": "not_provided",
+              "congestion_reason": "basic_transit_search",
+              "lane": {
+                "type": 1,
+                "busNo": "37",
+                "busID": "9559",
+                "busLocalBlID": "200000099",
+                "busProviderCode": 2
+              },
+              "m5121_candidate": false,
+              "mapping": {
+                "status": "route_mapped",
+                "boarding_status": "not_checked",
+                "alighting_status": "not_checked",
+                "internal_route_id": 837,
+                "boarding_visit_id": null,
+                "alighting_visit_id": null,
+                "notes": [
+                  "reference_only_not_boarding_probability",
+                  "boarding_permission_unverified",
+                  "historical_mapping_status_unverified",
+                  "ODsay_stationID_is_not_GBIS_stationId"
+                ]
+              }
+            },
+            {
+              "congestion_status": "not_provided",
+              "congestion_reason": "basic_transit_search",
+              "lane": {
+                "type": 1,
+                "busNo": "10",
+                "busID": "11000",
+                "busLocalBlID": "228000002",
+                "busProviderCode": 2
+              },
+              "m5121_candidate": false,
+              "mapping": {
+                "status": "route_mapped",
+                "boarding_status": "not_checked",
+                "alighting_status": "not_checked",
+                "internal_route_id": 1592,
+                "boarding_visit_id": null,
+                "alighting_visit_id": null,
+                "notes": [
+                  "reference_only_not_boarding_probability",
+                  "boarding_permission_unverified",
+                  "historical_mapping_status_unverified",
+                  "ODsay_stationID_is_not_GBIS_stationId"
+                ]
+              }
+            },
+            {
+              "congestion_status": "not_provided",
+              "congestion_reason": "basic_transit_search",
+              "lane": {
+                "type": 1,
+                "busNo": "10-2",
+                "busID": "11191",
+                "busLocalBlID": "228000255",
+                "busProviderCode": 2
+              },
+              "m5121_candidate": false,
+              "mapping": {
+                "status": "route_mapped",
+                "boarding_status": "not_checked",
+                "alighting_status": "not_checked",
+                "internal_route_id": 1058,
+                "boarding_visit_id": null,
+                "alighting_visit_id": null,
+                "notes": [
+                  "reference_only_not_boarding_probability",
+                  "boarding_permission_unverified",
+                  "historical_mapping_status_unverified",
+                  "ODsay_stationID_is_not_GBIS_stationId"
+                ]
+              }
+            },
+            {
+              "congestion_status": "not_provided",
+              "congestion_reason": "basic_transit_search",
+              "lane": {
+                "type": 1,
+                "busNo": "10-5",
+                "busID": "11002",
+                "busLocalBlID": "228000008",
+                "busProviderCode": 2
+              },
+              "m5121_candidate": false,
+              "mapping": {
+                "status": "route_mapped",
+                "boarding_status": "not_checked",
+                "alighting_status": "not_checked",
+                "internal_route_id": 961,
+                "boarding_visit_id": null,
+                "alighting_visit_id": null,
+                "notes": [
+                  "reference_only_not_boarding_probability",
+                  "boarding_permission_unverified",
+                  "historical_mapping_status_unverified",
+                  "ODsay_stationID_is_not_GBIS_stationId"
+                ]
+              }
+            },
+            {
+              "congestion_status": "not_provided",
+              "congestion_reason": "basic_transit_search",
+              "lane": {
+                "type": 1,
+                "busNo": "15-1",
+                "busID": "9662",
+                "busLocalBlID": "200000152",
+                "busProviderCode": 2
+              },
+              "m5121_candidate": false,
+              "mapping": {
+                "status": "route_mapped",
+                "boarding_status": "not_checked",
+                "alighting_status": "not_checked",
+                "internal_route_id": 530,
+                "boarding_visit_id": null,
+                "alighting_visit_id": null,
+                "notes": [
+                  "reference_only_not_boarding_probability",
+                  "boarding_permission_unverified",
+                  "historical_mapping_status_unverified",
+                  "ODsay_stationID_is_not_GBIS_stationId"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "leg_index": 2,
+          "type": "walk",
+          "duration_minutes": 2,
+          "provider_segment": {
+            "distance": 150,
+            "trafficType": 3,
+            "sectionTime": 2
+          }
+        },
+        {
+          "leg_index": 3,
+          "type": "subway",
+          "duration_minutes": 61,
+          "boarding": {
+            "odsay_station_id": "184",
+            "name": "수원",
+            "lon": 127.000036,
+            "lat": 37.266252
+          },
+          "alighting": {
+            "odsay_station_id": "133",
+            "name": "서울역",
+            "lon": 126.972314,
+            "lat": 37.555942
+          },
+          "provider_segment": {
+            "distance": 41500,
+            "trafficType": 1,
+            "sectionTime": 61,
+            "lane": [
+              {
+                "name": "수도권 1호선",
+                "subwayCode": 1
+              }
+            ],
+            "startID": "184",
+            "endID": "133",
+            "startName": "수원",
+            "endName": "서울역",
+            "startX": 127.000036,
+            "startY": 37.266252,
+            "endX": 126.972314,
+            "endY": 37.555942
+          }
+        },
+        {
+          "leg_index": 4,
+          "type": "walk",
+          "duration_minutes": 1,
+          "provider_segment": {
+            "distance": 95,
+            "trafficType": 3,
+            "sectionTime": 1
+          }
+        }
+      ]
+    },
+    {
+      "candidate_id": "odsay-1",
+      "path_index": 1,
+      "recommendation_rank": 6,
+      "provider_rank": 2,
+      "source": "odsay",
+      "seat_risk_status": "high",
+      "max_low_seat_probability": 0.2017,
+      "min_remaining_seats": 8,
+      "recommendation_reason": "장시간 우회 경로 (최단 대비 +24.0분)",
+      "uses_preferred_express_bus": false,
+      "alternative_candidate_ids": [
+        "odsay-0",
+        "odsay-2",
+        "odsay-6",
+        "odsay-4",
+        "odsay-7",
+        "odsay-5"
+      ],
+      "summary": {
+        "total_minutes": 89,
+        "departure_at": "2026-11-26T08:00:00+09:00",
+        "arrival_at": "2026-11-26T09:29:00+09:00",
+        "walking_minutes": 10,
+        "transfer_count": 0,
+        "time_source": "odsay_estimated"
+      },
+      "segments": [
+        {
+          "leg_index": 0,
+          "type": "walk",
+          "duration_minutes": 9,
+          "route_color": "#BDBDBD",
+          "estimated_start_at": "2026-11-26T08:00:00+09:00",
+          "estimated_end_at": "2026-11-26T08:09:00+09:00",
+          "estimated_boarding_at": null,
+          "seat_prediction": null
+        },
+        {
+          "leg_index": 1,
+          "type": "bus",
+          "duration_minutes": 79,
+          "route_id": "200000205",
+          "route_name": "8800",
+          "route_color": "#E53935",
+          "boarding_station": {
+            "name": "구법원사거리",
+            "id": "203000068",
+            "local_id": "203000068",
+            "ars_id": "04042",
+            "longitude": 127.04727,
+            "latitude": 37.273922
+          },
+          "alighting_station": {
+            "name": "서울역버스환승센터(6번승강장)",
+            "id": "101000006",
+            "local_id": "101000006",
+            "ars_id": "02006",
+            "longitude": 126.972796,
+            "latitude": 37.555441
+          },
+          "estimated_start_at": "2026-11-26T08:09:00+09:00",
+          "estimated_end_at": "2026-11-26T09:28:00+09:00",
+          "estimated_boarding_at": "2026-11-26T08:09:00+09:00",
+          "seat_prediction": {
+            "status": "available",
+            "estimated_boarding_at": "2026-11-26T08:09:00+09:00",
+            "estimated_remaining_seats": 8,
+            "low_seat_probability": 0.2017,
+            "model_type": "multiroute",
+            "model_version": "seat-per-route-v1"
+          }
+        },
+        {
+          "leg_index": 2,
+          "type": "walk",
+          "duration_minutes": 1,
+          "route_color": "#BDBDBD",
+          "estimated_start_at": "2026-11-26T09:28:00+09:00",
+          "estimated_end_at": "2026-11-26T09:29:00+09:00",
+          "estimated_boarding_at": null,
+          "seat_prediction": null
+        }
+      ],
+      "seat_predictions": [
+        {
+          "leg_index": 1,
+          "route_id": "200000205",
+          "route_name": "8800",
+          "station_id": "203000068",
+          "station_name": "구법원사거리",
+          "direction": "to:101000006",
+          "estimated_boarding_at": "2026-11-26T08:09:00+09:00",
+          "estimated_remaining_seats": 8,
+          "low_seat_probability": 0.2017,
+          "model_type": "multiroute",
+          "model_version": "seat-per-route-v1",
+          "status": "available"
+        }
+      ],
+      "evaluation": {
+        "method": "travel_time_only_v1",
+        "travel_minutes": 89,
+        "transfers": 0,
+        "walking_minutes": 10,
+        "contains_m5121_option": false,
+        "congestion_status": "unknown",
+        "congestion_references": [
+          {
+            "leg_index": 1,
+            "option_index": 0,
+            "type": "bus",
+            "bus_no": "8800",
+            "odsay_route_id": "9644",
+            "status": "unknown",
+            "reason": "no_verified_boarding_statistics",
+            "mean_cgst": null,
+            "p90": null,
+            "observation_count": null,
+            "numeric_count": null,
+            "boarding_visit_id": null,
+            "alighting_visit_id": null,
+            "reference_date": null,
+            "reference_tzon": null,
+            "policy": null
+          }
+        ]
+      },
+      "provider_index": 1,
+      "path_type": 2,
+      "provider_total_minutes": 89,
+      "derived_transfer_count": 0,
+      "transfer_count_method": "max(0, transit subPath count - 1); lane alternatives are not transfers",
+      "provider_bus_count": 1,
+      "provider_subway_count": 0,
+      "contains_m5121_option": false,
+      "legs": [
+        {
+          "leg_index": 0,
+          "type": "walk",
+          "duration_minutes": 9,
+          "provider_segment": {
+            "distance": 613,
+            "trafficType": 3,
+            "sectionTime": 9
+          }
+        },
+        {
+          "leg_index": 1,
+          "type": "bus",
+          "duration_minutes": 79,
+          "boarding": {
+            "odsay_station_id": "184722",
+            "local_station_id": "203000068",
+            "provider_code": 2,
+            "name": "구법원사거리",
+            "ars_id": "04042",
+            "lon": 127.04727,
+            "lat": 37.273922
+          },
+          "alighting": {
+            "odsay_station_id": "104664",
+            "local_station_id": "101000006",
+            "provider_code": 2,
+            "name": "서울역버스환승센터(6번승강장)",
+            "ars_id": "02006",
+            "lon": 126.972796,
+            "lat": 37.555441
+          },
+          "provider_segment": {
+            "distance": 46396,
+            "trafficType": 2,
+            "sectionTime": 79,
+            "lane": [
+              {
+                "type": 4,
+                "busNo": "8800",
+                "busID": "9644",
+                "busLocalBlID": "200000205",
+                "busProviderCode": 2
+              }
+            ],
+            "startID": "184722",
+            "endID": "104664",
+            "startLocalStationID": "203000068",
+            "endLocalStationID": "101000006",
+            "startStationProviderCode": 2,
+            "endStationProviderCode": 2,
+            "startName": "구법원사거리",
+            "endName": "서울역버스환승센터(6번승강장)",
+            "startArsID": "04042",
+            "endArsID": "02006",
+            "startX": 127.04727,
+            "startY": 37.273922,
+            "endX": 126.972796,
+            "endY": 37.555441
+          },
+          "bus_options": [
+            {
+              "seat_prediction": {
+                "status": "available",
+                "estimated_boarding_at": "2026-11-26T08:09:00+09:00",
+                "estimated_remaining_seats": 8,
+                "low_seat_probability": 0.2017,
+                "model_type": "multiroute",
+                "model_version": "seat-per-route-v1"
+              },
+              "congestion_status": "not_provided",
+              "congestion_reason": "basic_transit_search",
+              "lane": {
+                "type": 4,
+                "busNo": "8800",
+                "busID": "9644",
+                "busLocalBlID": "200000205",
+                "busProviderCode": 2
+              },
+              "m5121_candidate": false,
+              "mapping": {
+                "status": "route_mapped",
+                "boarding_status": "matched_declared_gbis_local_id",
+                "alighting_status": "matched_declared_gbis_local_id",
+                "internal_route_id": 2,
+                "boarding_visit_id": 69,
+                "alighting_visit_id": 96,
+                "notes": [
+                  "reference_only_not_boarding_probability",
+                  "boarding_permission_unverified",
+                  "historical_mapping_status_unverified",
+                  "ODsay_stationID_is_not_GBIS_stationId"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "leg_index": 2,
+          "type": "walk",
+          "duration_minutes": 1,
+          "provider_segment": {
+            "distance": 33,
+            "trafficType": 3,
+            "sectionTime": 1
+          }
+        }
+      ]
+    },
+    {
+      "candidate_id": "odsay-7",
+      "path_index": 7,
+      "recommendation_rank": 7,
+      "provider_rank": 8,
+      "source": "odsay",
+      "seat_risk_status": "not_applicable",
+      "recommendation_reason": "장시간 우회 경로 (최단 대비 +28.0분)",
+      "uses_preferred_express_bus": false,
+      "alternative_for": [
+        {
+          "original_candidate_id": "odsay-1",
+          "additional_travel_minutes": 4,
+          "low_seat_reduction_pp": null
+        }
+      ],
+      "summary": {
+        "total_minutes": 93,
+        "departure_at": "2026-11-26T08:00:00+09:00",
+        "arrival_at": "2026-11-26T09:33:00+09:00",
+        "walking_minutes": 12,
+        "transfer_count": 1,
+        "time_source": "odsay_estimated"
+      },
+      "segments": [
+        {
+          "leg_index": 0,
+          "type": "walk",
+          "duration_minutes": 9,
+          "route_color": "#BDBDBD",
+          "estimated_start_at": "2026-11-26T08:00:00+09:00",
+          "estimated_end_at": "2026-11-26T08:09:00+09:00",
+          "estimated_boarding_at": null,
+          "seat_prediction": null
+        },
+        {
+          "leg_index": 1,
+          "type": "bus",
+          "duration_minutes": 20,
+          "route_id": "200000054",
+          "route_name": "82-1",
+          "route_color": "#43A047",
+          "boarding_station": {
+            "name": "구법원사거리",
+            "id": "203000068",
+            "local_id": "203000068",
+            "ars_id": "04042",
+            "longitude": 127.04727,
+            "latitude": 37.273922
+          },
+          "alighting_station": {
+            "name": "수원역7번출구.AK플라자",
+            "id": "202000219",
+            "local_id": "202000219",
+            "ars_id": "03017",
+            "longitude": 127.000889,
+            "latitude": 37.267422
+          },
+          "estimated_start_at": "2026-11-26T08:09:00+09:00",
+          "estimated_end_at": "2026-11-26T08:29:00+09:00",
+          "estimated_boarding_at": "2026-11-26T08:09:00+09:00",
+          "seat_prediction": null
+        },
+        {
+          "leg_index": 2,
+          "type": "transfer_walk",
+          "duration_minutes": 2,
+          "route_color": "#757575",
+          "estimated_start_at": "2026-11-26T08:29:00+09:00",
+          "estimated_end_at": "2026-11-26T08:31:00+09:00",
+          "estimated_boarding_at": null,
+          "seat_prediction": null
+        },
+        {
+          "leg_index": 3,
+          "type": "subway",
+          "duration_minutes": 61,
+          "route_id": "1",
+          "route_name": "수도권 1호선",
+          "route_color": "#0052A4",
+          "boarding_station": {
+            "name": "수원",
+            "id": "184",
+            "longitude": 127.000036,
+            "latitude": 37.266252
+          },
+          "alighting_station": {
+            "name": "서울역",
+            "id": "133",
+            "longitude": 126.972314,
+            "latitude": 37.555942
+          },
+          "estimated_start_at": "2026-11-26T08:31:00+09:00",
+          "estimated_end_at": "2026-11-26T09:32:00+09:00",
+          "estimated_boarding_at": "2026-11-26T08:31:00+09:00",
+          "seat_prediction": null
+        },
+        {
+          "leg_index": 4,
+          "type": "walk",
+          "duration_minutes": 1,
+          "route_color": "#BDBDBD",
+          "estimated_start_at": "2026-11-26T09:32:00+09:00",
+          "estimated_end_at": "2026-11-26T09:33:00+09:00",
+          "estimated_boarding_at": null,
+          "seat_prediction": null
+        }
+      ],
+      "evaluation": {
+        "method": "travel_time_only_v1",
+        "travel_minutes": 93,
+        "transfers": 1,
+        "walking_minutes": 12,
+        "contains_m5121_option": false,
+        "congestion_status": "unknown",
+        "congestion_references": [
+          {
+            "leg_index": 1,
+            "option_index": 0,
+            "type": "bus",
+            "bus_no": "82-1",
+            "odsay_route_id": "9562",
+            "status": "unknown",
+            "reason": "no_verified_boarding_statistics",
+            "mean_cgst": null,
+            "p90": null,
+            "observation_count": null,
+            "numeric_count": null,
+            "boarding_visit_id": null,
+            "alighting_visit_id": null,
+            "reference_date": null,
+            "reference_tzon": null,
+            "policy": null
+          },
+          {
+            "leg_index": 1,
+            "option_index": 1,
+            "type": "bus",
+            "bus_no": "37",
+            "odsay_route_id": "9559",
+            "status": "unknown",
+            "reason": "no_verified_boarding_statistics",
+            "mean_cgst": null,
+            "p90": null,
+            "observation_count": null,
+            "numeric_count": null,
+            "boarding_visit_id": null,
+            "alighting_visit_id": null,
+            "reference_date": null,
+            "reference_tzon": null,
+            "policy": null
+          },
+          {
+            "leg_index": 1,
+            "option_index": 2,
+            "type": "bus",
+            "bus_no": "10",
+            "odsay_route_id": "11000",
+            "status": "unknown",
+            "reason": "no_verified_boarding_statistics",
+            "mean_cgst": null,
+            "p90": null,
+            "observation_count": null,
+            "numeric_count": null,
+            "boarding_visit_id": null,
+            "alighting_visit_id": null,
+            "reference_date": null,
+            "reference_tzon": null,
+            "policy": null
+          },
+          {
+            "leg_index": 1,
+            "option_index": 3,
+            "type": "bus",
+            "bus_no": "10-2",
+            "odsay_route_id": "11191",
+            "status": "unknown",
+            "reason": "no_verified_boarding_statistics",
+            "mean_cgst": null,
+            "p90": null,
+            "observation_count": null,
+            "numeric_count": null,
+            "boarding_visit_id": null,
+            "alighting_visit_id": null,
+            "reference_date": null,
+            "reference_tzon": null,
+            "policy": null
+          },
+          {
+            "leg_index": 1,
+            "option_index": 4,
+            "type": "bus",
+            "bus_no": "10-5",
+            "odsay_route_id": "11002",
+            "status": "unknown",
+            "reason": "no_verified_boarding_statistics",
+            "mean_cgst": null,
+            "p90": null,
+            "observation_count": null,
+            "numeric_count": null,
+            "boarding_visit_id": null,
+            "alighting_visit_id": null,
+            "reference_date": null,
+            "reference_tzon": null,
+            "policy": null
+          },
+          {
+            "leg_index": 1,
+            "option_index": 5,
+            "type": "bus",
+            "bus_no": "15-1",
+            "odsay_route_id": "9662",
+            "status": "unknown",
+            "reason": "no_verified_boarding_statistics",
+            "mean_cgst": null,
+            "p90": null,
+            "observation_count": null,
+            "numeric_count": null,
+            "boarding_visit_id": null,
+            "alighting_visit_id": null,
+            "reference_date": null,
+            "reference_tzon": null,
+            "policy": null
+          },
+          {
+            "leg_index": 3,
+            "option_index": 0,
+            "type": "subway",
+            "line_name": "수도권 1호선",
+            "subway_code": 1,
+            "status": "unknown",
+            "reason": "no_verified_boarding_statistics",
+            "mean_cgst": null,
+            "p90": null,
+            "observation_count": null,
+            "numeric_count": null,
+            "boarding_visit_id": null,
+            "alighting_visit_id": null,
+            "reference_date": null,
+            "reference_tzon": null,
+            "policy": null
+          }
+        ]
+      },
+      "provider_index": 7,
+      "path_type": 3,
+      "provider_total_minutes": 93,
+      "derived_transfer_count": 1,
+      "transfer_count_method": "max(0, transit subPath count - 1); lane alternatives are not transfers",
+      "provider_bus_count": 1,
+      "provider_subway_count": 1,
+      "contains_m5121_option": false,
+      "legs": [
+        {
+          "leg_index": 0,
+          "type": "walk",
+          "duration_minutes": 9,
+          "provider_segment": {
+            "distance": 613,
+            "trafficType": 3,
+            "sectionTime": 9
+          }
+        },
+        {
+          "leg_index": 1,
+          "type": "bus",
+          "duration_minutes": 20,
+          "boarding": {
+            "odsay_station_id": "184722",
+            "local_station_id": "203000068",
+            "provider_code": 2,
+            "name": "구법원사거리",
+            "ars_id": "04042",
+            "lon": 127.04727,
+            "lat": 37.273922
+          },
+          "alighting": {
+            "odsay_station_id": "184320",
+            "local_station_id": "202000219",
+            "provider_code": 2,
+            "name": "수원역7번출구.AK플라자",
+            "ars_id": "03017",
+            "lon": 127.000889,
+            "lat": 37.267422
+          },
+          "provider_segment": {
+            "distance": 4707,
+            "trafficType": 2,
+            "sectionTime": 20,
+            "lane": [
+              {
+                "type": 1,
+                "busNo": "82-1",
+                "busID": "9562",
+                "busLocalBlID": "200000054",
+                "busProviderCode": 2
+              },
+              {
+                "type": 1,
+                "busNo": "37",
+                "busID": "9559",
+                "busLocalBlID": "200000099",
+                "busProviderCode": 2
+              },
+              {
+                "type": 1,
+                "busNo": "10",
+                "busID": "11000",
+                "busLocalBlID": "228000002",
+                "busProviderCode": 2
+              },
+              {
+                "type": 1,
+                "busNo": "10-2",
+                "busID": "11191",
+                "busLocalBlID": "228000255",
+                "busProviderCode": 2
+              },
+              {
+                "type": 1,
+                "busNo": "10-5",
+                "busID": "11002",
+                "busLocalBlID": "228000008",
+                "busProviderCode": 2
+              },
+              {
+                "type": 1,
+                "busNo": "15-1",
+                "busID": "9662",
+                "busLocalBlID": "200000152",
+                "busProviderCode": 2
+              }
+            ],
+            "startID": "184722",
+            "endID": "184320",
+            "startLocalStationID": "203000068",
+            "endLocalStationID": "202000219",
+            "startStationProviderCode": 2,
+            "endStationProviderCode": 2,
+            "startName": "구법원사거리",
+            "endName": "수원역7번출구.AK플라자",
+            "startArsID": "04042",
+            "endArsID": "03017",
+            "startX": 127.04727,
+            "startY": 37.273922,
+            "endX": 127.000889,
+            "endY": 37.267422
+          },
+          "bus_options": [
+            {
+              "congestion_status": "not_provided",
+              "congestion_reason": "basic_transit_search",
+              "lane": {
+                "type": 1,
+                "busNo": "82-1",
+                "busID": "9562",
+                "busLocalBlID": "200000054",
+                "busProviderCode": 2
+              },
+              "m5121_candidate": false,
+              "mapping": {
+                "status": "route_mapped",
+                "boarding_status": "not_checked",
+                "alighting_status": "not_checked",
+                "internal_route_id": 2237,
+                "boarding_visit_id": null,
+                "alighting_visit_id": null,
+                "notes": [
+                  "reference_only_not_boarding_probability",
+                  "boarding_permission_unverified",
+                  "historical_mapping_status_unverified",
+                  "ODsay_stationID_is_not_GBIS_stationId"
+                ]
+              }
+            },
+            {
+              "congestion_status": "not_provided",
+              "congestion_reason": "basic_transit_search",
+              "lane": {
+                "type": 1,
+                "busNo": "37",
+                "busID": "9559",
+                "busLocalBlID": "200000099",
+                "busProviderCode": 2
+              },
+              "m5121_candidate": false,
+              "mapping": {
+                "status": "route_mapped",
+                "boarding_status": "not_checked",
+                "alighting_status": "not_checked",
+                "internal_route_id": 837,
+                "boarding_visit_id": null,
+                "alighting_visit_id": null,
+                "notes": [
+                  "reference_only_not_boarding_probability",
+                  "boarding_permission_unverified",
+                  "historical_mapping_status_unverified",
+                  "ODsay_stationID_is_not_GBIS_stationId"
+                ]
+              }
+            },
+            {
+              "congestion_status": "not_provided",
+              "congestion_reason": "basic_transit_search",
+              "lane": {
+                "type": 1,
+                "busNo": "10",
+                "busID": "11000",
+                "busLocalBlID": "228000002",
+                "busProviderCode": 2
+              },
+              "m5121_candidate": false,
+              "mapping": {
+                "status": "route_mapped",
+                "boarding_status": "not_checked",
+                "alighting_status": "not_checked",
+                "internal_route_id": 1592,
+                "boarding_visit_id": null,
+                "alighting_visit_id": null,
+                "notes": [
+                  "reference_only_not_boarding_probability",
+                  "boarding_permission_unverified",
+                  "historical_mapping_status_unverified",
+                  "ODsay_stationID_is_not_GBIS_stationId"
+                ]
+              }
+            },
+            {
+              "congestion_status": "not_provided",
+              "congestion_reason": "basic_transit_search",
+              "lane": {
+                "type": 1,
+                "busNo": "10-2",
+                "busID": "11191",
+                "busLocalBlID": "228000255",
+                "busProviderCode": 2
+              },
+              "m5121_candidate": false,
+              "mapping": {
+                "status": "route_mapped",
+                "boarding_status": "not_checked",
+                "alighting_status": "not_checked",
+                "internal_route_id": 1058,
+                "boarding_visit_id": null,
+                "alighting_visit_id": null,
+                "notes": [
+                  "reference_only_not_boarding_probability",
+                  "boarding_permission_unverified",
+                  "historical_mapping_status_unverified",
+                  "ODsay_stationID_is_not_GBIS_stationId"
+                ]
+              }
+            },
+            {
+              "congestion_status": "not_provided",
+              "congestion_reason": "basic_transit_search",
+              "lane": {
+                "type": 1,
+                "busNo": "10-5",
+                "busID": "11002",
+                "busLocalBlID": "228000008",
+                "busProviderCode": 2
+              },
+              "m5121_candidate": false,
+              "mapping": {
+                "status": "route_mapped",
+                "boarding_status": "not_checked",
+                "alighting_status": "not_checked",
+                "internal_route_id": 961,
+                "boarding_visit_id": null,
+                "alighting_visit_id": null,
+                "notes": [
+                  "reference_only_not_boarding_probability",
+                  "boarding_permission_unverified",
+                  "historical_mapping_status_unverified",
+                  "ODsay_stationID_is_not_GBIS_stationId"
+                ]
+              }
+            },
+            {
+              "congestion_status": "not_provided",
+              "congestion_reason": "basic_transit_search",
+              "lane": {
+                "type": 1,
+                "busNo": "15-1",
+                "busID": "9662",
+                "busLocalBlID": "200000152",
+                "busProviderCode": 2
+              },
+              "m5121_candidate": false,
+              "mapping": {
+                "status": "route_mapped",
+                "boarding_status": "not_checked",
+                "alighting_status": "not_checked",
+                "internal_route_id": 530,
+                "boarding_visit_id": null,
+                "alighting_visit_id": null,
+                "notes": [
+                  "reference_only_not_boarding_probability",
+                  "boarding_permission_unverified",
+                  "historical_mapping_status_unverified",
+                  "ODsay_stationID_is_not_GBIS_stationId"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "leg_index": 2,
+          "type": "walk",
+          "duration_minutes": 2,
+          "provider_segment": {
+            "distance": 150,
+            "trafficType": 3,
+            "sectionTime": 2
+          }
+        },
+        {
+          "leg_index": 3,
+          "type": "subway",
+          "duration_minutes": 61,
+          "boarding": {
+            "odsay_station_id": "184",
+            "name": "수원",
+            "lon": 127.000036,
+            "lat": 37.266252
+          },
+          "alighting": {
+            "odsay_station_id": "133",
+            "name": "서울역",
+            "lon": 126.972314,
+            "lat": 37.555942
+          },
+          "provider_segment": {
+            "distance": 41500,
+            "trafficType": 1,
+            "sectionTime": 61,
+            "lane": [
+              {
+                "name": "수도권 1호선",
+                "subwayCode": 1
+              }
+            ],
+            "startID": "184",
+            "endID": "133",
+            "startName": "수원",
+            "endName": "서울역",
+            "startX": 127.000036,
+            "startY": 37.266252,
+            "endX": 126.972314,
+            "endY": 37.555942
+          }
+        },
+        {
+          "leg_index": 4,
+          "type": "walk",
+          "duration_minutes": 1,
+          "provider_segment": {
+            "distance": 95,
+            "trafficType": 3,
+            "sectionTime": 1
+          }
+        }
+      ]
+    },
+    {
+      "candidate_id": "odsay-5",
+      "path_index": 5,
+      "recommendation_rank": 8,
+      "provider_rank": 6,
+      "source": "odsay",
+      "seat_risk_status": "not_applicable",
+      "recommendation_reason": "장시간 우회 경로 (최단 대비 +29.0분)",
+      "uses_preferred_express_bus": false,
+      "alternative_for": [
+        {
+          "original_candidate_id": "odsay-1",
+          "additional_travel_minutes": 5,
+          "low_seat_reduction_pp": null
+        }
+      ],
+      "summary": {
+        "total_minutes": 94,
+        "departure_at": "2026-11-26T08:00:00+09:00",
+        "arrival_at": "2026-11-26T09:34:00+09:00",
+        "walking_minutes": 14,
+        "transfer_count": 1,
+        "time_source": "odsay_estimated"
+      },
+      "segments": [
+        {
+          "leg_index": 0,
+          "type": "walk",
+          "duration_minutes": 11,
+          "route_color": "#BDBDBD",
+          "estimated_start_at": "2026-11-26T08:00:00+09:00",
+          "estimated_end_at": "2026-11-26T08:11:00+09:00",
+          "estimated_boarding_at": null,
+          "seat_prediction": null
+        },
+        {
+          "leg_index": 1,
+          "type": "bus",
+          "duration_minutes": 19,
+          "route_id": "200000185",
+          "route_name": "13-4",
+          "route_color": "#43A047",
+          "boarding_station": {
+            "name": "아주대학교입구",
+            "id": "202000004",
+            "local_id": "202000004",
+            "ars_id": "03129",
+            "longitude": 127.043829,
+            "latitude": 37.275859
+          },
+          "alighting_station": {
+            "name": "수원역7번출구.AK플라자",
+            "id": "202000219",
+            "local_id": "202000219",
+            "ars_id": "03017",
+            "longitude": 127.000889,
+            "latitude": 37.267422
+          },
+          "estimated_start_at": "2026-11-26T08:11:00+09:00",
+          "estimated_end_at": "2026-11-26T08:30:00+09:00",
+          "estimated_boarding_at": "2026-11-26T08:11:00+09:00",
+          "seat_prediction": null
+        },
+        {
+          "leg_index": 2,
+          "type": "transfer_walk",
+          "duration_minutes": 2,
+          "route_color": "#757575",
+          "estimated_start_at": "2026-11-26T08:30:00+09:00",
+          "estimated_end_at": "2026-11-26T08:32:00+09:00",
+          "estimated_boarding_at": null,
+          "seat_prediction": null
+        },
+        {
+          "leg_index": 3,
+          "type": "subway",
+          "duration_minutes": 61,
+          "route_id": "1",
+          "route_name": "수도권 1호선",
+          "route_color": "#0052A4",
+          "boarding_station": {
+            "name": "수원",
+            "id": "184",
+            "longitude": 127.000036,
+            "latitude": 37.266252
+          },
+          "alighting_station": {
+            "name": "서울역",
+            "id": "133",
+            "longitude": 126.972314,
+            "latitude": 37.555942
+          },
+          "estimated_start_at": "2026-11-26T08:32:00+09:00",
+          "estimated_end_at": "2026-11-26T09:33:00+09:00",
+          "estimated_boarding_at": "2026-11-26T08:32:00+09:00",
+          "seat_prediction": null
+        },
+        {
+          "leg_index": 4,
+          "type": "walk",
+          "duration_minutes": 1,
+          "route_color": "#BDBDBD",
+          "estimated_start_at": "2026-11-26T09:33:00+09:00",
+          "estimated_end_at": "2026-11-26T09:34:00+09:00",
+          "estimated_boarding_at": null,
+          "seat_prediction": null
+        }
+      ],
+      "evaluation": {
+        "method": "travel_time_only_v1",
+        "travel_minutes": 94,
+        "transfers": 1,
+        "walking_minutes": 14,
+        "contains_m5121_option": false,
+        "congestion_status": "unknown",
+        "congestion_references": [
+          {
+            "leg_index": 1,
+            "option_index": 0,
+            "type": "bus",
+            "bus_no": "13-4",
+            "odsay_route_id": "9509",
+            "status": "unknown",
+            "reason": "no_verified_boarding_statistics",
+            "mean_cgst": null,
+            "p90": null,
+            "observation_count": null,
+            "numeric_count": null,
+            "boarding_visit_id": null,
+            "alighting_visit_id": null,
+            "reference_date": null,
+            "reference_tzon": null,
+            "policy": null
+          },
+          {
+            "leg_index": 1,
+            "option_index": 1,
+            "type": "bus",
+            "bus_no": "720-2",
+            "odsay_route_id": "10012",
+            "status": "unknown",
+            "reason": "no_verified_boarding_statistics",
+            "mean_cgst": null,
+            "p90": null,
+            "observation_count": null,
+            "numeric_count": null,
+            "boarding_visit_id": null,
+            "alighting_visit_id": null,
+            "reference_date": null,
+            "reference_tzon": null,
+            "policy": null
+          },
+          {
+            "leg_index": 1,
+            "option_index": 2,
+            "type": "bus",
+            "bus_no": "11-1",
+            "odsay_route_id": "9556",
+            "status": "unknown",
+            "reason": "no_verified_boarding_statistics",
+            "mean_cgst": null,
+            "p90": null,
+            "observation_count": null,
+            "numeric_count": null,
+            "boarding_visit_id": null,
+            "alighting_visit_id": null,
+            "reference_date": null,
+            "reference_tzon": null,
+            "policy": null
+          },
+          {
+            "leg_index": 1,
+            "option_index": 3,
+            "type": "bus",
+            "bus_no": "32-4",
+            "odsay_route_id": "9699",
+            "status": "unknown",
+            "reason": "no_verified_boarding_statistics",
+            "mean_cgst": null,
+            "p90": null,
+            "observation_count": null,
+            "numeric_count": null,
+            "boarding_visit_id": null,
+            "alighting_visit_id": null,
+            "reference_date": null,
+            "reference_tzon": null,
+            "policy": null
+          },
+          {
+            "leg_index": 3,
+            "option_index": 0,
+            "type": "subway",
+            "line_name": "수도권 1호선",
+            "subway_code": 1,
+            "status": "unknown",
+            "reason": "no_verified_boarding_statistics",
+            "mean_cgst": null,
+            "p90": null,
+            "observation_count": null,
+            "numeric_count": null,
+            "boarding_visit_id": null,
+            "alighting_visit_id": null,
+            "reference_date": null,
+            "reference_tzon": null,
+            "policy": null
+          }
+        ]
+      },
+      "provider_index": 5,
+      "path_type": 3,
+      "provider_total_minutes": 94,
+      "derived_transfer_count": 1,
+      "transfer_count_method": "max(0, transit subPath count - 1); lane alternatives are not transfers",
+      "provider_bus_count": 1,
+      "provider_subway_count": 1,
+      "contains_m5121_option": false,
+      "legs": [
+        {
+          "leg_index": 0,
+          "type": "walk",
+          "duration_minutes": 11,
+          "provider_segment": {
+            "distance": 760,
+            "trafficType": 3,
+            "sectionTime": 11
+          }
+        },
+        {
+          "leg_index": 1,
+          "type": "bus",
+          "duration_minutes": 19,
+          "boarding": {
+            "odsay_station_id": "114894",
+            "local_station_id": "202000004",
+            "provider_code": 2,
+            "name": "아주대학교입구",
+            "ars_id": "03129",
+            "lon": 127.043829,
+            "lat": 37.275859
+          },
+          "alighting": {
+            "odsay_station_id": "184320",
+            "local_station_id": "202000219",
+            "provider_code": 2,
+            "name": "수원역7번출구.AK플라자",
+            "ars_id": "03017",
+            "lon": 127.000889,
+            "lat": 37.267422
+          },
+          "provider_segment": {
+            "distance": 4484,
+            "trafficType": 2,
+            "sectionTime": 19,
+            "lane": [
+              {
+                "type": 1,
+                "busNo": "13-4",
+                "busID": "9509",
+                "busLocalBlID": "200000185",
+                "busProviderCode": 2
+              },
+              {
+                "type": 1,
+                "busNo": "720-2",
+                "busID": "10012",
+                "busLocalBlID": "234000026",
+                "busProviderCode": 2
+              },
+              {
+                "type": 1,
+                "busNo": "11-1",
+                "busID": "9556",
+                "busLocalBlID": "200000070",
+                "busProviderCode": 2
+              },
+              {
+                "type": 1,
+                "busNo": "32-4",
+                "busID": "9699",
+                "busLocalBlID": "200000272",
+                "busProviderCode": 2
+              }
+            ],
+            "startID": "114894",
+            "endID": "184320",
+            "startLocalStationID": "202000004",
+            "endLocalStationID": "202000219",
+            "startStationProviderCode": 2,
+            "endStationProviderCode": 2,
+            "startName": "아주대학교입구",
+            "endName": "수원역7번출구.AK플라자",
+            "startArsID": "03129",
+            "endArsID": "03017",
+            "startX": 127.043829,
+            "startY": 37.275859,
+            "endX": 127.000889,
+            "endY": 37.267422
+          },
+          "bus_options": [
+            {
+              "congestion_status": "not_provided",
+              "congestion_reason": "basic_transit_search",
+              "lane": {
+                "type": 1,
+                "busNo": "13-4",
+                "busID": "9509",
+                "busLocalBlID": "200000185",
+                "busProviderCode": 2
+              },
+              "m5121_candidate": false,
+              "mapping": {
+                "status": "route_mapped",
+                "boarding_status": "not_checked",
+                "alighting_status": "not_checked",
+                "internal_route_id": 846,
+                "boarding_visit_id": null,
+                "alighting_visit_id": null,
+                "notes": [
+                  "reference_only_not_boarding_probability",
+                  "boarding_permission_unverified",
+                  "historical_mapping_status_unverified",
+                  "ODsay_stationID_is_not_GBIS_stationId"
+                ]
+              }
+            },
+            {
+              "congestion_status": "not_provided",
+              "congestion_reason": "basic_transit_search",
+              "lane": {
+                "type": 1,
+                "busNo": "720-2",
+                "busID": "10012",
+                "busLocalBlID": "234000026",
+                "busProviderCode": 2
+              },
+              "m5121_candidate": false,
+              "mapping": {
+                "status": "route_mapped",
+                "boarding_status": "not_checked",
+                "alighting_status": "not_checked",
+                "internal_route_id": 2732,
+                "boarding_visit_id": null,
+                "alighting_visit_id": null,
+                "notes": [
+                  "reference_only_not_boarding_probability",
+                  "boarding_permission_unverified",
+                  "historical_mapping_status_unverified",
+                  "ODsay_stationID_is_not_GBIS_stationId"
+                ]
+              }
+            },
+            {
+              "congestion_status": "not_provided",
+              "congestion_reason": "basic_transit_search",
+              "lane": {
+                "type": 1,
+                "busNo": "11-1",
+                "busID": "9556",
+                "busLocalBlID": "200000070",
+                "busProviderCode": 2
+              },
+              "m5121_candidate": false,
+              "mapping": {
+                "status": "route_mapped",
+                "boarding_status": "not_checked",
+                "alighting_status": "not_checked",
+                "internal_route_id": 2424,
+                "boarding_visit_id": null,
+                "alighting_visit_id": null,
+                "notes": [
+                  "reference_only_not_boarding_probability",
+                  "boarding_permission_unverified",
+                  "historical_mapping_status_unverified",
+                  "ODsay_stationID_is_not_GBIS_stationId"
+                ]
+              }
+            },
+            {
+              "congestion_status": "not_provided",
+              "congestion_reason": "basic_transit_search",
+              "lane": {
+                "type": 1,
+                "busNo": "32-4",
+                "busID": "9699",
+                "busLocalBlID": "200000272",
+                "busProviderCode": 2
+              },
+              "m5121_candidate": false,
+              "mapping": {
+                "status": "route_mapped",
+                "boarding_status": "not_checked",
+                "alighting_status": "not_checked",
+                "internal_route_id": 2172,
+                "boarding_visit_id": null,
+                "alighting_visit_id": null,
+                "notes": [
+                  "reference_only_not_boarding_probability",
+                  "boarding_permission_unverified",
+                  "historical_mapping_status_unverified",
+                  "ODsay_stationID_is_not_GBIS_stationId"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "leg_index": 2,
+          "type": "walk",
+          "duration_minutes": 2,
+          "provider_segment": {
+            "distance": 150,
+            "trafficType": 3,
+            "sectionTime": 2
+          }
+        },
+        {
+          "leg_index": 3,
+          "type": "subway",
+          "duration_minutes": 61,
+          "boarding": {
+            "odsay_station_id": "184",
+            "name": "수원",
+            "lon": 127.000036,
+            "lat": 37.266252
+          },
+          "alighting": {
+            "odsay_station_id": "133",
+            "name": "서울역",
+            "lon": 126.972314,
+            "lat": 37.555942
+          },
+          "provider_segment": {
+            "distance": 41500,
+            "trafficType": 1,
+            "sectionTime": 61,
+            "lane": [
+              {
+                "name": "수도권 1호선",
+                "subwayCode": 1
+              }
+            ],
+            "startID": "184",
+            "endID": "133",
+            "startName": "수원",
+            "endName": "서울역",
+            "startX": 127.000036,
+            "startY": 37.266252,
+            "endX": 126.972314,
+            "endY": 37.555942
+          }
+        },
+        {
+          "leg_index": 4,
+          "type": "walk",
+          "duration_minutes": 1,
+          "provider_segment": {
+            "distance": 95,
+            "trafficType": 3,
+            "sectionTime": 1
+          }
+        }
+      ]
+    }
+  ],
+  "policy": {
+    "boarding_failure_probability": "not_computed",
+    "card_seat_summary_basis": "bottleneck_min_remaining_seats_and_max_low_seat_probability_across_express_legs",
+    "comparison_metrics": "transfers_and_walking_are_separate_not_weighted",
+    "congestion_scoring": "not_used",
+    "congestion_use": "not_requested",
+    "low_seat_probability_meaning": "probability_of_5_or_fewer_remaining_seats_not_boarding_failure",
+    "max_additional_travel_minutes": "15",
+    "odsay_opt": "0",
+    "ranking": "provider_order_unchanged",
+    "recommendation": "seat_aware_unified_v1",
+    "recommendation_scope": "returned_candidates_only",
+    "seat_improvement_threshold": "0.10",
+    "seat_risk_trigger_probability": "0.20",
+    "time_matching": "not_performed"
+  }
+}

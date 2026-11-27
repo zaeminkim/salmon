@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
+import 'package:salmon/data/auth/auth_api.dart';
+import 'package:salmon/ui/core/widgets/app_glass_text_field.dart';
+import 'package:salmon/ui/core/widgets/app_primary_button.dart';
 
 const _brand = Color(0xFFD9553E);
 const _ink = Color(0xFF292D32);
 const _muted = Color(0xFF71777D);
 
 class SignupScreen extends StatefulWidget {
-  const SignupScreen({super.key});
+  const SignupScreen({super.key, this.authApi});
+
+  final AuthApi? authApi;
 
   @override
   State<SignupScreen> createState() => _SignupScreenState();
@@ -26,8 +30,34 @@ class _SignupScreenState extends State<SignupScreen> {
   bool _showConfirmation = false;
   bool _termsAgreed = false;
   bool _privacyAgreed = false;
+  bool _submitting = false;
 
   bool get _allAgreed => _termsAgreed && _privacyAgreed;
+
+  Future<void> _signup() async {
+    if (_submitting) return;
+    FocusScope.of(context).unfocus();
+    final email = _email.trim();
+    setState(() => _submitting = true);
+    try {
+      await (widget.authApi ?? AuthApi.instance).signup(
+        email: email,
+        password: _password,
+        passwordConfirm: _passwordConfirmation,
+        nickname: _nickname,
+        termsAgreed: _termsAgreed,
+        privacyAgreed: _privacyAgreed,
+      );
+      if (mounted) Navigator.of(context).pop(email);
+    } on AuthFailure catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+        ..removeCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(error.message)));
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
+  }
 
   @override
   void dispose() {
@@ -43,6 +73,7 @@ class _SignupScreenState extends State<SignupScreen> {
     final passwordsDiffer =
         _passwordConfirmation.isNotEmpty && _password != _passwordConfirmation;
     final canSignup =
+        !_submitting &&
         _email.trim().isNotEmpty &&
         _password.isNotEmpty &&
         _password == _passwordConfirmation &&
@@ -144,31 +175,15 @@ class _SignupScreenState extends State<SignupScreen> {
                 detailsTitle: '개인정보 수집 및 이용',
               ),
               const SizedBox(height: 24),
-              GlassButton.custom(
-                height: 52,
-                surfaceStyle: GlassSurfaceStyle.solid,
+              AppPrimaryButton(
+                label: _submitting ? '가입 중…' : '회원가입 완료',
                 enabled: canSignup,
-                color: canSignup ? _brand : _brand.withAlpha(225),
-                shape: const LiquidRoundedRectangle(borderRadius: 24),
-                onTap: () {
-                  FocusScope.of(context).unfocus();
-                  ScaffoldMessenger.of(context)
-                    ..hideCurrentSnackBar()
-                    ..showSnackBar(
-                      const SnackBar(content: Text('회원가입에 필요한 입력을 확인했습니다.')),
-                    );
-                },
-                child: const Text(
-                  '회원가입 완료',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+                onTap: _signup,
               ),
               TextButton(
-                onPressed: () => Navigator.maybePop(context),
+                onPressed: _submitting
+                    ? null
+                    : () => Navigator.maybePop(context),
                 child: const Text(
                   '이미 계정이 있으신가요? 로그인',
                   style: TextStyle(color: _muted),
@@ -202,51 +217,23 @@ class _SignupScreenState extends State<SignupScreen> {
             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
         ),
-        TextFieldTapRegion(
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            excludeFromSemantics: true,
-            onTap: () {
-              final editableText = focusNode.context
-                  ?.findAncestorStateOfType<EditableTextState>();
-              if (editableText != null) {
-                editableText.requestKeyboard();
-              } else {
-                focusNode.requestFocus();
-              }
-            },
-            child: GlassTextField(
-              focusNode: focusNode,
-              placeholder: placeholder,
-              onChanged: onChanged,
-              keyboardType: keyboardType,
-              obscureText: onToggleVisibility != null && !showPassword,
-              height: 52,
-              textStyle: const TextStyle(fontFamily: 'Noto Sans KR'),
-              placeholderStyle: const TextStyle(fontFamily: 'Noto Sans KR'),
-              surfaceStyle: GlassSurfaceStyle.glass,
-              useOwnLayer: true,
-              settings: const LiquidGlassSettings(
-                bodyMode: GlassBodyMode.clear,
-                glassColor: Color(0xB3E1E7EF),
-              ),
-              shape: const LiquidRoundedRectangle(
-                borderRadius: 12,
-                side: BorderSide(color: Color(0xFFA9ABB0)),
-              ),
-              suffixIcon: onToggleVisibility == null
-                  ? null
-                  : IconButton(
-                      tooltip: showPassword ? '비밀번호 숨기기' : '비밀번호 표시',
-                      onPressed: onToggleVisibility,
-                      icon: Icon(
-                        showPassword
-                            ? Icons.visibility_off_outlined
-                            : Icons.visibility_outlined,
-                      ),
-                    ),
-            ),
-          ),
+        AppGlassTextField(
+          focusNode: focusNode,
+          placeholder: placeholder,
+          onChanged: onChanged,
+          keyboardType: keyboardType,
+          obscureText: onToggleVisibility != null && !showPassword,
+          suffixIcon: onToggleVisibility == null
+              ? null
+              : IconButton(
+                  tooltip: showPassword ? '비밀번호 숨기기' : '비밀번호 표시',
+                  onPressed: onToggleVisibility,
+                  icon: Icon(
+                    showPassword
+                        ? Icons.visibility_off_outlined
+                        : Icons.visibility_outlined,
+                  ),
+                ),
         ),
         if (error != null)
           Text(error, style: const TextStyle(color: _brand, fontSize: 12)),

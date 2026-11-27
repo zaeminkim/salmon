@@ -39,6 +39,7 @@ dependencies:
   liquid_glass_widgets: ^1.19.0
   kakao_flutter_sdk_user: ^2.1.0
   dio: ^5.11.1
+  flutter_secure_storage: ^11.2.0
   flutter_svg: ^2.3.4
   shared_preferences: ^2.5.6
 
@@ -76,6 +77,9 @@ flutter:
 
   # To add assets to your application, add an assets section, like this:
   assets:
+    - assets/examples/journey_search.json
+    - assets/examples/journey_candidate_detail.json
+    - assets/examples/journey_api_inputs.json
     #   - images/a_dot_burr.jpeg
     #   - images/a_dot_ham.jpeg
     - assets/images/location-pin.png
