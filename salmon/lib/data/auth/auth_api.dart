@@ -1,6 +1,8 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import '../backend.dart';
+
 class AuthFailure implements Exception {
   const AuthFailure(this.message, {this.code});
 
@@ -14,7 +16,7 @@ class AuthApi {
           dio ??
           Dio(
             BaseOptions(
-              baseUrl: 'https://geoseulleong-06469e76bb18.herokuapp.com',
+              baseUrl: salmonBackendUrl,
               contentType: Headers.jsonContentType,
               connectTimeout: const Duration(seconds: 10),
               receiveTimeout: const Duration(seconds: 15),

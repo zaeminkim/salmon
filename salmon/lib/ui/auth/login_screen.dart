@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
-import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart' as kakao;
 import 'package:salmon/data/auth/auth_api.dart';
+import 'package:salmon/data/auth/kakao_login_sdk.dart';
 import 'package:salmon/ui/core/widgets/app_glass_text_field.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'package:salmon/ui/auth/signup_screen.dart';
@@ -41,7 +40,7 @@ class _LoginScreenState extends State<LoginScreen> {
     } on AuthFailure catch (error) {
       if (mounted) _showMessage(error.message);
     } catch (error) {
-      if (mounted && !_isKakaoCancellation(error)) {
+      if (mounted && !isKakaoLoginCancellation(error)) {
         _showMessage('로그인에 실패했어요. 잠시 후 다시 시도해 주세요.');
       }
     } finally {
@@ -59,7 +58,7 @@ class _LoginScreenState extends State<LoginScreen> {
       _showMessage('카카오 로그인은 Android 앱에서 이용할 수 있어요.');
       return false;
     }
-    final token = await _getKakaoToken();
+    final token = await getKakaoLoginToken();
     if (!mounted) return false;
     try {
       await _authApi.loginWithKakao(token.accessToken);
@@ -70,23 +69,6 @@ class _LoginScreenState extends State<LoginScreen> {
     }
     return true;
   });
-
-  Future<kakao.OAuthToken> _getKakaoToken() async {
-    if (await kakao.isKakaoTalkInstalled()) {
-      try {
-        return await kakao.UserApi.instance.loginWithKakaoTalk();
-      } catch (error) {
-        if (_isKakaoCancellation(error)) rethrow;
-      }
-    }
-    return kakao.UserApi.instance.loginWithKakaoAccount();
-  }
-
-  bool _isKakaoCancellation(Object error) =>
-      (error is PlatformException &&
-          (error.code == 'CANCELED' || error.code == 'CANCELLED')) ||
-      (error is kakao.KakaoClientException &&
-          error.reason == kakao.ClientErrorCause.cancelled);
 
   Future<bool> _confirmKakaoConsent() async {
     var terms = false;
@@ -169,22 +151,24 @@ class _LoginScreenState extends State<LoginScreen> {
           padding: EdgeInsets.symmetric(horizontal: _pagePadding, vertical: 32),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            spacing: 4,
             children: [
               Text(
                 '거슬렁',
                 style: TextStyle(
-                  fontSize: 34,
+                  fontSize: 42,
                   fontWeight: FontWeight.bold,
                   color: _brand,
                 ),
               ),
+              SizedBox(height: 12,),
               Text(
                 '내가 원하는 길로, 편안하게',
-                style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold),
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
               ),
               Text(
                 '나에게 맞는 이동을 거슬러에서 시작하세요.',
-                style: TextStyle(color: Color(0xFF71777D)),
+                style: TextStyle(fontSize: 18, color: Color(0xFF71777D)),
               ),
               SizedBox(height: 32),
               Column(
@@ -220,7 +204,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       style: TextStyle(color: Color(0xFF71777D)),
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 52),
                   const Row(
                     spacing: 12,
                     children: [

@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:kakao_map_sdk/kakao_map_sdk.dart';
+
+import '../data/location_permission.dart';
 import 'dart:async';
 import 'package:geolocator/geolocator.dart' as geo; // geo: 패키지에 붙이는 별명
-import 'package:dio/dio.dart';
 
-import '../ui/route_search/routesearch_screen.dart' show KakaoSearchResult;
+import '../data/places/kakao_search_result.dart';
+import '../ui/route_search/kakao_place_suggestions.dart';
+import 'demo_map_overlays.dart';
 
 class KakaomapSdk extends StatefulWidget {
   const KakaomapSdk({super.key}); // 생성자: key를 상위 클래스 생성자에 넘김
@@ -23,142 +26,26 @@ class _KakaomapSdkState extends State<KakaomapSdk>
 
   KakaoMapController? _controller;
 
-  // salmon.local.json의 REST API 키를 빌드 시 읽습니다.
-  static const _restApiKey = String.fromEnvironment('KAKAO_REST_API_KEY');
   final _searchController = TextEditingController(); // 검색창의 텍스트 관리
   final _searchFocus = FocusNode(); // 검색창의 입력 포커스 관리
+  // salmon.local.json의 REST API 키를 빌드 시 읽습니다.
   // 카카오 검색 API 호출
-  final _searchDio = Dio(
-    BaseOptions(
-      baseUrl: 'https://dapi.kakao.com/v2/local/search',
-      connectTimeout: const Duration(seconds: 10),
-      receiveTimeout: const Duration(seconds: 10),
-    ),
-  );
-  Timer? _searchDebounce;
-  CancelToken? _searchCancelToken;
-  int _searchGeneration = 0;
-  bool _isSearching = false;
-  String? _searchMessage;
-  List<KakaoSearchResult> _searchResults = [];
+  final _placeSuggestions = KakaoPlaceSuggestions();
   KakaoSearchResult? _selectedSearchResult;
 
   // 새 입력이 오면 이전 타이머/요청을 중단하고 400ms 후 검색합니다.
   void _onSearchChanged(String value) {
-    _searchDebounce?.cancel();
-    _searchCancelToken?.cancel();
-    final generation = ++_searchGeneration;
-    final query = value.trim();
-    setState(() {
-      _searchResults = [];
-      _selectedSearchResult = null;
-      _searchMessage = null;
-      _isSearching = query.isNotEmpty;
-    });
-    if (query.isEmpty) return;
-    _searchDebounce = Timer(const Duration(milliseconds: 400), () {
-      unawaited(_searchPlaces(query, generation));
-    });
-  }
-
-  String _searchErrorMessage(DioException error) {
-    return switch (error.response?.statusCode) {
-      401 => 'REST API 키가 올바른지 확인해 주세요. (401)',
-      403 => '카카오 API 사용 권한과 키 제한 설정을 확인해 주세요. (403)',
-      429 => '검색 요청 한도를 초과했습니다. 잠시 후 다시 시도해 주세요. (429)',
-      _ => '검색에 실패했습니다. 네트워크를 확인하고 다시 검색해 주세요.',
-    };
-  }
-
-  Future<void> _searchPlaces(String query, int generation) async {
-    if (!mounted || generation != _searchGeneration) return;
-    if (_restApiKey.trim().isEmpty) {
-      setState(() {
-        _isSearching = false;
-        _searchMessage =
-            'salmon.local.json에 KAKAO_REST_API_KEY를 추가한 뒤 다시 빌드해 주세요.';
-      });
-      return;
-    }
-
-    final cancelToken = CancelToken();
-    _searchCancelToken = cancelToken;
-
+    _selectedSearchResult = null;
     // 한 API가 실패해도 다른 API의 성공 결과는 표시합니다.
-    Future<({List<KakaoSearchResult> results, String? error})> fetch(
-      bool isAddress,
-    ) async {
-      try {
-        final response = await _searchDio.get<Map<String, dynamic>>(
-          isAddress ? '/address.json' : '/keyword.json',
-          queryParameters: {
-            'query': query,
-            'size': 10,
-            if (isAddress) 'analyze_type': 'similar',
-          },
-          options: Options(headers: {'Authorization': 'KakaoAK $_restApiKey'}),
-          cancelToken: cancelToken,
-        );
-        final documents = response.data?['documents'] as List<dynamic>? ?? [];
-        final results = documents
-            .map(
-              (item) => KakaoSearchResult.fromDocument(
-                Map<String, dynamic>.from(item as Map),
-                isAddress: isAddress,
-              ),
-            )
-            .whereType<KakaoSearchResult>()
-            .toList();
-        return (results: results, error: null);
-      } on DioException catch (error) {
-        if (CancelToken.isCancel(error)) {
-          return (results: <KakaoSearchResult>[], error: null);
-        }
-        return (
-          results: <KakaoSearchResult>[],
-          error: _searchErrorMessage(error),
-        );
-      } catch (_) {
-        return (
-          results: <KakaoSearchResult>[],
-          error: '검색 결과를 해석하지 못했습니다. 다시 시도해 주세요.',
-        );
-      }
-    }
-
-    final responses = await Future.wait([fetch(false), fetch(true)]);
-    if (!mounted ||
-        generation != _searchGeneration ||
-        cancelToken.isCancelled) {
-      return;
-    }
-    final results = responses.expand((response) => response.results).toList();
-    final errors = responses
-        .map((response) => response.error)
-        .whereType<String>()
-        .toSet();
-    setState(() {
-      _searchResults = results;
-      _isSearching = false;
-      _searchMessage = errors.isNotEmpty
-          ? errors.join('\n')
-          : results.isEmpty
-          ? '검색 결과가 없습니다. 장소명이나 주소를 더 입력해 주세요.'
-          : null;
-    });
+    _placeSuggestions.update(value);
   }
 
   Future<void> _selectSearchResult(KakaoSearchResult result) async {
-    _searchDebounce?.cancel();
-    _searchCancelToken?.cancel();
-    ++_searchGeneration;
+    _placeSuggestions.update('');
     _searchFocus.unfocus();
     _searchController.text = result.name;
     setState(() {
       _selectedSearchResult = result;
-      _searchResults = [];
-      _searchMessage = null;
-      _isSearching = false;
     });
     // 정보는 메모리에만 보관하며 백엔드 요청은 보내지 않습니다.
     final controller = _controller;
@@ -209,17 +96,17 @@ class _KakaomapSdkState extends State<KakaomapSdk>
                 ),
               ),
             ),
-            if (_isSearching)
+            if (_placeSuggestions.isSearching)
               const Padding(
                 padding: EdgeInsets.only(top: 8),
                 child: LinearProgressIndicator(),
               ),
-            if (_searchMessage != null)
+            if (_placeSuggestions.message != null)
               Padding(
                 padding: const EdgeInsets.only(top: 8),
-                child: Text(_searchMessage!),
+                child: Text(_placeSuggestions.message!),
               ),
-            if (_searchResults.isNotEmpty)
+            if (_placeSuggestions.results.isNotEmpty)
               ConstrainedBox(
                 constraints: BoxConstraints(
                   maxHeight: MediaQuery.sizeOf(context).height * 0.3,
@@ -228,10 +115,10 @@ class _KakaomapSdkState extends State<KakaomapSdk>
                   shrinkWrap: true,
                   keyboardDismissBehavior:
                       ScrollViewKeyboardDismissBehavior.onDrag,
-                  itemCount: _searchResults.length,
+                  itemCount: _placeSuggestions.results.length,
                   separatorBuilder: (_, index) => const Divider(height: 1),
                   itemBuilder: (context, index) {
-                    final result = _searchResults[index];
+                    final result = _placeSuggestions.results[index];
                     return ListTile(
                       contentPadding: EdgeInsets.zero,
                       leading: Icon(
@@ -293,7 +180,12 @@ class _KakaomapSdkState extends State<KakaomapSdk>
     // try-catch문
     // try 안에서 발생한 오류는 catch가 받음
     try {
-      await _addOverlays(controller);
+      await addDemoMapOverlays(
+        context,
+        controller,
+        cityHall: _cityHall,
+        seoulStation: _seoulStation,
+      );
     } catch (error, stackTrace) {
       debugPrint('오버레이 추가 실패 $error');
       debugPrintStack(stackTrace: stackTrace);
@@ -325,72 +217,6 @@ class _KakaomapSdkState extends State<KakaomapSdk>
     await controller.moveCamera(update, animation: const CameraAnimation(1000));
   }
 
-  Future<void> _addOverlays(KakaoMapController controller) async {
-    // 이미지가 로딩된 상태에서 합성하도록 미리 준비합니다.
-    const pinImage = AssetImage('assets/images/location-pin.png');
-
-    await precacheImage(pinImage, context);
-    if (!mounted) return;
-
-    final destinationIcon = await KImage.fromWidget(
-      Stack(
-        fit: StackFit.expand,
-        children: [
-          const Image(image: pinImage, fit: BoxFit.fill),
-          Positioned(
-            top: 14,
-            left: 4,
-            right: 4,
-            child: const Text(
-              '도착지',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 7,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ],
-      ),
-      const Size(28, 36),
-      context: context,
-    );
-
-    if (!mounted) return;
-
-    await controller.labelLayer.addPoi(
-      _seoulStation,
-      id: 'seoul-station',
-      style: PoiStyle(icon: destinationIcon, anchor: const KPoint(0.5, 1.0)),
-    );
-
-    await controller.routeLayer.addRoute(
-      const [_cityHall, LatLng(37.5600, 126.9750), _seoulStation],
-      RouteStyle(
-        Colors.orange,
-        16.0,
-        strokeColor: Colors.white,
-        strokeWidth: 2.0,
-      ),
-    );
-
-    await controller.lodLabelLayer.addLodPoi(
-      _cityHall,
-      text: '서울시청',
-      style: PoiStyle(
-        icon: KImage.fromAsset('assets/images/location-pin.png', 24, 36),
-        textStyle: const [PoiTextStyle(size: 20, color: Colors.black)],
-      ),
-    );
-
-    // await controller.labelLayer.addPolylineText('시청에서 서울역 방향', const [
-    //   _cityHall,
-    //   LatLng(37.5600, 126.9750),
-    //   _seoulStation,
-    // ], style: PolylineTextStyle(24, Colors.deepPurple));
-  }
-
   // geolocator
   // 위치 서비스와 권한을 확인하는 함수
   void _showLocationMessage(String message) {
@@ -399,38 +225,6 @@ class _KakaomapSdkState extends State<KakaomapSdk>
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(content: Text(message)));
-  }
-
-  Future<bool> _checkLocationPermission({
-    required bool requestPermission,
-  }) async {
-    final enabled = await geo.Geolocator.isLocationServiceEnabled();
-
-    if (!enabled) {
-      _showLocationMessage('기기 설정에서 위치 기능을 켠 뒤 현재 위치 버튼을 눌러 주세요.');
-      return false;
-    }
-
-    var permission = await geo.Geolocator.checkPermission();
-
-    if (permission == geo.LocationPermission.denied && requestPermission) {
-      permission = await geo.Geolocator.requestPermission();
-    }
-
-    if (permission == geo.LocationPermission.deniedForever) {
-      _showLocationMessage('Android 설정 → 앱 → salmon → 권한에서 위치를 허용해 주세요.');
-      return false;
-    }
-
-    final allowed =
-        permission == geo.LocationPermission.whileInUse ||
-        permission == geo.LocationPermission.always;
-
-    if (!allowed) {
-      _showLocationMessage('현재 위치를 표시하려면 위치 권한이 필요합니다.');
-    }
-
-    return allowed;
   }
 
   // 좌표를 받아 파란 객체를 만들거나 이동시키는 함수
@@ -541,7 +335,8 @@ class _KakaomapSdkState extends State<KakaomapSdk>
     });
 
     try {
-      final allowed = await _checkLocationPermission(
+      final allowed = await checkLocationPermission(
+        onMessage: _showLocationMessage,
         requestPermission: requestPermission,
       );
 
@@ -626,6 +421,7 @@ class _KakaomapSdkState extends State<KakaomapSdk>
   @override
   void initState() {
     super.initState();
+    _placeSuggestions.addListener(() => setState(() {}));
 
     WidgetsBinding.instance.addObserver(this);
   }
@@ -652,9 +448,7 @@ class _KakaomapSdkState extends State<KakaomapSdk>
     WidgetsBinding.instance.removeObserver(this);
 
     _stopLocation();
-    _searchDebounce?.cancel();
-    _searchCancelToken?.cancel();
-    _searchDio.close(force: true);
+    _placeSuggestions.dispose();
     _searchController.dispose();
     _searchFocus.dispose();
 

@@ -1,6 +1,7 @@
 // 앱 설정과 첫 화면을 정함
 
 import 'package:flutter/material.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'package:salmon/data/auth/auth_api.dart';
 import 'package:salmon/ui/auth/login_screen.dart';
 import 'package:salmon/ui/my_routes/myroutes_screen.dart';
@@ -29,7 +30,11 @@ class _MyAppState extends State<MyApp> {
         builder: (context, snapshot) {
           if (snapshot.connectionState != ConnectionState.done) {
             return const Scaffold(
-              body: Center(child: CircularProgressIndicator()),
+              body: Center(child: GlassProgressIndicator.circular(
+                size: 40,
+                strokeWidth: 5.5,
+                color: Color(0xFFD9553E),
+              )),
             );
           }
           return snapshot.data == true

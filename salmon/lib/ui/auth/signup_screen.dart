@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:salmon/data/auth/auth_api.dart';
 import 'package:salmon/ui/core/widgets/app_glass_text_field.dart';
+import 'package:salmon/ui/core/widgets/app_message_dialog.dart';
 import 'package:salmon/ui/core/widgets/app_primary_button.dart';
 
 const _brand = Color(0xFFD9553E);
@@ -87,10 +88,10 @@ class _SignupScreenState extends State<SignupScreen> {
         foregroundColor: _ink,
         surfaceTintColor: Colors.transparent,
         centerTitle: false,
-        titleSpacing: 0,
+        titleSpacing: -4,
         title: const Text(
           '회원가입',
-          style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
+          style: TextStyle(fontSize: 25, fontWeight: FontWeight.w700),
         ),
       ),
       body: SafeArea(
@@ -289,17 +290,12 @@ class _SignupScreenState extends State<SignupScreen> {
           tooltip: '$detailsTitle 자세히 보기',
           icon: const Icon(Icons.chevron_right, color: _muted, size: 20),
           onPressed: () {
-            showDialog<void>(
+            showDialog<bool>(
               context: context,
-              builder: (dialogContext) => AlertDialog(
-                title: Text(detailsTitle),
-                content: const Text('약관 본문을 준비 중입니다.'),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(dialogContext),
-                    child: const Text('닫기'),
-                  ),
-                ],
+              builder: (_) => AppMessageDialog(
+                title: detailsTitle,
+                message: '약관 본문을 준비 중입니다.',
+                actionLabel: '닫기',
               ),
             );
           },

@@ -2,20 +2,14 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
-import '../journey_presentation.dart';
+import 'journey_presentation.dart';
 import 'journey_recommendation.dart';
 
 class JourneyResultCard extends StatelessWidget {
-  const JourneyResultCard({
-    super.key,
-    required this.route,
-    this.onTap,
-    this.places,
-  });
+  const JourneyResultCard({super.key, required this.route, this.onTap});
 
   final Map<String, dynamic> route;
   final VoidCallback? onTap;
-  final String? places;
 
   @override
   Widget build(BuildContext context) {
@@ -78,13 +72,6 @@ class JourneyResultCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              if (places case final label?) ...[
-                Text(
-                  label,
-                  style: const TextStyle(fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 6),
-              ],
               Row(
                 children: [
                   Expanded(
@@ -111,7 +98,7 @@ class JourneyResultCard extends StatelessWidget {
               JourneyRecommendation(route: route),
               if (timedSegments.isNotEmpty) ...[
                 const SizedBox(height: 14),
-                _JourneyTimeBar(segments: timedSegments),
+                JourneyTimeBar(segments: timedSegments),
               ],
               for (final segment in transitSegments) ...[
                 const SizedBox(height: 14),
@@ -132,8 +119,8 @@ String _formatNumber(num value) => value.round().toString().replaceAllMapped(
   (_) => ',',
 );
 
-class _JourneyTimeBar extends StatelessWidget {
-  const _JourneyTimeBar({required this.segments});
+class JourneyTimeBar extends StatelessWidget {
+  const JourneyTimeBar({super.key, required this.segments});
 
   final List<JourneySegment> segments;
 

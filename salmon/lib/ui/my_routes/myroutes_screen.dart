@@ -1,25 +1,31 @@
-import 'dart:async';
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:kakao_map_sdk/kakao_map_sdk.dart';
-import 'package:geolocator/geolocator.dart' as geo; // geo: 패키지에 붙이는 별명
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import '../../data/journeys/journey_example_api.dart';
-import '../core/journey_presentation.dart';
-import '../route_results/journey_preview_map.dart'
-    show journeyPosition, journeyShapePoints;
 import '../route_results/routeresults_screen.dart';
 import '../route_search/bus_route_search_field.dart';
+import '../route_search/kakao_place_suggestions.dart';
 import '../route_search/routesearch_screen.dart';
+import '../route_search/search_field_clear_button.dart';
 import '../settings/settings_screen.dart';
-import 'widgets/saved_routes_overlay.dart';
+import 'map_location_tracker.dart';
+import 'route_map_overlays.dart';
+import 'route_sheet.dart';
+import '../core/widgets/app_map_icon_button.dart';
+import '../core/widgets/journey_map_geometry.dart';
+import '../core/widgets/saved_routes_overlay.dart';
 
 const _brand = Color(0xFFD9553E);
+const _appBarButtonSize = 48.0;
+const _mapButtonSize = 48.0;
+const _mapButtonGap = 12.0;
+const _mapControlsHeight = 2 * _mapButtonSize + _mapButtonGap;
 
 class MyRoutesScreen extends StatefulWidget {
   const MyRoutesScreen({super.key, this.journeyClient, this.savedRouteExample});
@@ -29,34 +35,54 @@ class MyRoutesScreen extends StatefulWidget {
 
   @override
   State<MyRoutesScreen> createState() => _MyRoutesScreenState();
-  // 위젯에 사용할 상태 객체를 만들어 반환함MyRoutesScreen
+  // 위젯에 사용할 상태 객체를 만들어 반환함: MyRoutesScreen
 }
 
 class _MyRoutesScreenState extends State<MyRoutesScreen>
     with
         WidgetsBindingObserver // 앱의 백그라운드 전환과 복귀를 감지
         {
+  static const _searchTabIndex = 1;
   static const _cityHall = LatLng(37.5665, 126.9780);
 
-  static const _headingChannel = EventChannel('salmon/device_heading');
-
   KakaoMapController? _controller;
-  StreamSubscription<void>? _headingSubscription;
-  PoiStyle? _locationDotStyle;
-  PoiStyle? _locationHeadingStyle;
+  bool _locationRouteVisible = true;
+  bool _locationAppVisible = true;
+  late final _location = MapLocationTracker(
+    onChanged: () {
+      if (mounted) setState(() {});
+    },
+    onMessage: _showLocationMessage,
+  );
+
+  late final _mapOverlays = RouteMapOverlays(
+    activeSearchPlace: (origin) =>
+        _tabIndex == _searchTabIndex ? (origin ? _origin : _destination) : null,
+    shouldShowSavedExample: () => _showSavedExample,
+    loadSavedExample: () => _savedExample,
+    onSavedRouteCameraMove: _location.clearSelection,
+    buildPinIcon: _buildRoutePinIcon,
+  );
 
   int _tabIndex = 0;
   bool _savedExampleSelected = true;
   late final _savedExample = widget.savedRouteExample ?? loadJourneyExample();
-  final _savedRouteRemovals = <Future<void> Function()>[];
-  final _savedRoutePinStyles = <bool, PoiStyle>{};
-  PolylineStyle _savedRouteLineStyle = PolylineStyle(_brand, 4);
-  Future<void> _savedRouteUpdates = Future<void>.value();
-  int _savedRouteRevision = 0;
   bool get _showSavedExample => _tabIndex == 0 && _savedExampleSelected;
+  ({LatLng origin, LatLng destination})? _savedRouteEndpoints;
+  RouteCameraView? _routeCameraView;
+  bool _movingRouteCamera = false;
 
-  // salmon.local.json의 REST API 키를 빌드 시 읽습니다.
-  static const _restApiKey = String.fromEnvironment('KAKAO_REST_API_KEY');
+  ({LatLng origin, LatLng destination})? get _activeRouteEndpoints {
+    if (_tabIndex == 0) return _showSavedExample ? _savedRouteEndpoints : null;
+    final origin = _origin;
+    final destination = _destination;
+    if (origin == null || destination == null) return null;
+    return (
+      origin: LatLng(origin.latitude, origin.longitude),
+      destination: LatLng(destination.latitude, destination.longitude),
+    );
+  }
+
   final _originController = TextEditingController();
   final _destinationController = TextEditingController();
   final _originFocus = FocusNode();
@@ -64,139 +90,23 @@ class _MyRoutesScreenState extends State<MyRoutesScreen>
 
   KakaoSearchResult? _origin;
   KakaoSearchResult? _destination;
-  final _routePins = <bool, Poi>{};
-  final _routePinStyles = <bool, PoiStyle>{};
-  Future<void> _routePinUpdates = Future<void>.value();
   bool? _editingOrigin; // true: 출발지, false: 목적지, null: 편집 종료
-  final _routeSheet = GlassModalSheetController();
+  late final _routeSheet = RouteSheetController(
+    onPositionChanged: _onRouteSheetPositionChanged,
+  );
   final _busNumberController = TextEditingController();
   final _busNumberFocus = FocusNode();
   String? _selectedBusRoute;
-  GlassSheetState _routeSheetState = GlassSheetState.hidden;
-
-  // 카카오 검색 API 호출
-  final _searchDio = Dio(
-    BaseOptions(
-      baseUrl: 'https://dapi.kakao.com/v2/local/search',
-      connectTimeout: const Duration(seconds: 10),
-      receiveTimeout: const Duration(seconds: 10),
-    ),
-  );
-  Timer? _searchDebounce;
-  CancelToken? _searchCancelToken;
-  int _searchGeneration = 0;
-  bool _isSearching = false;
-  String? _searchMessage;
-  List<KakaoSearchResult> _searchResults = [];
+  final _placeSuggestions = KakaoPlaceSuggestions();
+  int _placeEditRevision = 0;
+  bool _locatingForPlace = false;
   KakaoSearchResult? _selectedSearchResult;
 
   // 새 입력이 오면 이전 타이머/요청을 중단하고 400ms 후 검색합니다.
   void _onSearchChanged(String value, {bool submit = false}) {
     if (_editingOrigin == null) return;
-    _searchDebounce?.cancel();
-    _searchCancelToken?.cancel();
-    final generation = ++_searchGeneration;
-    final query = value.trim();
-    setState(() {
-      _searchResults = [];
-      _searchMessage = null;
-      _isSearching = query.isNotEmpty;
-    });
-    if (query.isEmpty) return;
-    if (submit) {
-      unawaited(_searchPlaces(query, generation));
-      return;
-    }
-    _searchDebounce = Timer(const Duration(milliseconds: 400), () {
-      unawaited(_searchPlaces(query, generation));
-    });
-  }
-
-  String _searchErrorMessage(DioException error) {
-    return switch (error.response?.statusCode) {
-      401 => 'REST API 키가 올바른지 확인해 주세요. (401)',
-      403 => '카카오 API 사용 권한과 키 제한 설정을 확인해 주세요. (403)',
-      429 => '검색 요청 한도를 초과했습니다. 잠시 후 다시 시도해 주세요. (429)',
-      _ => '검색에 실패했습니다. 네트워크를 확인하고 다시 검색해 주세요.',
-    };
-  }
-
-  Future<void> _searchPlaces(String query, int generation) async {
-    if (!mounted || generation != _searchGeneration) return;
-    if (_restApiKey.trim().isEmpty) {
-      setState(() {
-        _isSearching = false;
-        _searchMessage =
-            'salmon.local.json에 KAKAO_REST_API_KEY를 추가한 뒤 다시 빌드해 주세요.';
-      });
-      return;
-    }
-
-    final cancelToken = CancelToken();
-    _searchCancelToken = cancelToken;
-
-    // 한 API가 실패해도 다른 API의 성공 결과는 표시합니다.
-    Future<({List<KakaoSearchResult> results, String? error})> fetch(
-      bool isAddress,
-    ) async {
-      try {
-        final response = await _searchDio.get<Map<String, dynamic>>(
-          isAddress ? '/address.json' : '/keyword.json',
-          queryParameters: {
-            'query': query,
-            'size': 10,
-            if (isAddress) 'analyze_type': 'similar',
-          },
-          options: Options(headers: {'Authorization': 'KakaoAK $_restApiKey'}),
-          cancelToken: cancelToken,
-        );
-        final documents = response.data?['documents'] as List<dynamic>? ?? [];
-        final results = documents
-            .map(
-              (item) => KakaoSearchResult.fromDocument(
-                Map<String, dynamic>.from(item as Map),
-                isAddress: isAddress,
-              ),
-            )
-            .whereType<KakaoSearchResult>()
-            .toList();
-        return (results: results, error: null);
-      } on DioException catch (error) {
-        if (CancelToken.isCancel(error)) {
-          return (results: <KakaoSearchResult>[], error: null);
-        }
-        return (
-          results: <KakaoSearchResult>[],
-          error: _searchErrorMessage(error),
-        );
-      } catch (_) {
-        return (
-          results: <KakaoSearchResult>[],
-          error: '검색 결과를 해석하지 못했습니다. 다시 시도해 주세요.',
-        );
-      }
-    }
-
-    final responses = await Future.wait([fetch(false), fetch(true)]);
-    if (!mounted ||
-        generation != _searchGeneration ||
-        cancelToken.isCancelled) {
-      return;
-    }
-    final results = responses.expand((response) => response.results).toList();
-    final errors = responses
-        .map((response) => response.error)
-        .whereType<String>()
-        .toSet();
-    setState(() {
-      _searchResults = results;
-      _isSearching = false;
-      _searchMessage = errors.isNotEmpty
-          ? errors.join('\n')
-          : results.isEmpty
-          ? '검색 결과가 없습니다. 장소명이나 주소를 더 입력해 주세요.'
-          : null;
-    });
+    ++_placeEditRevision;
+    _placeSuggestions.update(value, submit: submit);
   }
 
   void _startPlaceEdit(bool origin) {
@@ -214,19 +124,24 @@ class _MyRoutesScreenState extends State<MyRoutesScreen>
     setState(() => _editingOrigin = null);
   }
 
-  void _onRouteSheetStateChanged(GlassSheetState state) {
-    if (state != GlassSheetState.full) {
+  void _onRouteSheetPositionChanged(
+    RouteSheetPosition previous,
+    RouteSheetPosition position,
+  ) {
+    if (position != RouteSheetPosition.full &&
+        (position == RouteSheetPosition.hidden ||
+            previous == RouteSheetPosition.full)) {
       _busNumberFocus.unfocus();
       _originFocus.unfocus();
       _destinationFocus.unfocus();
     }
-    if (state == GlassSheetState.hidden && _editingOrigin != null) {
+    if (position == RouteSheetPosition.hidden && _editingOrigin != null) {
       _cancelPlaceEdit();
     }
-    setState(() => _routeSheetState = state);
+    setState(() {});
   }
 
-  void _openRouteResults() {
+  Future<void> _openRouteResults() async {
     final origin = _origin;
     final destination = _destination;
     if (origin == null || destination == null) return;
@@ -234,32 +149,73 @@ class _MyRoutesScreenState extends State<MyRoutesScreen>
         .replaceAll(RegExp(r'\s+'), '')
         .toUpperCase();
     FocusScope.of(context).unfocus();
-    Navigator.of(context).push<void>(
-      MaterialPageRoute(
-        builder: (_) => RouteResultsScreen(
-          origin: origin,
-          destination: destination,
-          preferredBusNumber: enteredBusNumber.isEmpty
-              ? null
-              : _selectedBusRoute ?? enteredBusNumber,
-          preferredBusLabel: enteredBusNumber,
-          journeyClient: widget.journeyClient,
-        ),
+    final finished = await Navigator.of(context).push<bool>(
+      PageRouteBuilder<bool>(
+        transitionDuration: const Duration(milliseconds: 450),
+        reverseTransitionDuration: const Duration(milliseconds: 450),
+        pageBuilder: (context, animation, secondaryAnimation) {
+          return RouteResultsScreen(
+            origin: origin,
+            destination: destination,
+            preferredBusNumber: enteredBusNumber.isEmpty
+                ? null
+                : _selectedBusRoute ?? enteredBusNumber,
+            preferredBusLabel: enteredBusNumber,
+            journeyClient: widget.journeyClient,
+          );
+        },
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          final position = animation
+              .drive(CurveTween(curve: Curves.easeInOutCubic))
+              .drive(
+                Tween<Offset>(begin: const Offset(0, 1), end: Offset.zero),
+              );
+
+          return SlideTransition(position: position, child: child);
+        },
       ),
     );
+    if (finished == true && mounted) {
+      _routeSheet.moveTo(RouteSheetPosition.half);
+    }
+  }
+
+  Future<void> _selectMyLocation() async {
+    if (_editingOrigin == null || _locatingForPlace) return;
+    final revision = _placeEditRevision;
+    bool isCurrentEdit() =>
+        mounted && _editingOrigin != null && _placeEditRevision == revision;
+
+    setState(() => _locatingForPlace = true);
+    try {
+      final position = await _location.locateForSearch((message) {
+        if (isCurrentEdit()) _showLocationMessage(message);
+      });
+      if (position == null || !isCurrentEdit()) return;
+      await _selectSearchResult(
+        KakaoSearchResult(
+          name: '내 위치',
+          address: '',
+          latitude: position.latitude,
+          longitude: position.longitude,
+          isAddress: false,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _locatingForPlace = false);
+    }
   }
 
   Future<void> _selectSearchResult(KakaoSearchResult result) async {
     final editingOrigin = _editingOrigin;
     if (editingOrigin == null) return;
 
-    _searchDebounce?.cancel();
-    _searchCancelToken?.cancel();
-    ++_searchGeneration;
+    _placeSuggestions.update('');
     _originFocus.unfocus();
     _destinationFocus.unfocus();
     (editingOrigin ? _originController : _destinationController).text =
         result.name;
+    _location.clearSelection();
     setState(() {
       if (editingOrigin) {
         _origin = result;
@@ -268,204 +224,62 @@ class _MyRoutesScreenState extends State<MyRoutesScreen>
       }
       _editingOrigin = null;
 
-      _gpsSelected = false;
       _selectedSearchResult = result;
-      _searchResults = [];
-      _searchMessage = null;
-      _isSearching = false;
+      _routeCameraView = null;
     });
     final controller = _controller;
     if (controller != null) {
-      _updateRoutePin(controller, origin: editingOrigin, place: result);
+      _mapOverlays.updateSearchPin(origin: editingOrigin, place: result);
       await _moveCameraToSearchResult(controller, result);
     }
   }
 
-  void _updateRoutePin(
-    KakaoMapController controller, {
-    required bool origin,
-    required KakaoSearchResult? place,
-  }) {
-    KakaoSearchResult? activePlace() =>
-        _tabIndex == 1 ? (origin ? _origin : _destination) : null;
-    // Keep native add/remove calls in order when a selection quickly changes.
-    _routePinUpdates = _routePinUpdates.then((_) async {
-      if (!mounted ||
-          _controller != controller ||
-          !identical(activePlace(), place)) {
-        return;
-      }
-
-      try {
-        final previous = _routePins[origin];
-        if (previous != null) {
-          await previous.remove();
-          if (!mounted || _controller != controller) return;
-          _routePins.remove(origin);
-        }
-        if (place == null || !identical(activePlace(), place)) {
-          return;
-        }
-
-        final pin = await controller.labelLayer.addPoi(
-          LatLng(place.latitude, place.longitude),
-          id: origin ? 'route-origin' : 'route-destination',
-          text: origin ? '출발지' : '목적지',
-          rank: 9000,
-          style: _routePinStyles.putIfAbsent(
-            origin,
-            () => PoiStyle(
-              icon: KImage.fromAsset('assets/images/location-pin.png', 28, 36),
-              anchor: const KPoint(0.5, 1.0),
-              textStyle: [
-                PoiTextStyle(
-                  size: 15,
-                  color: origin
-                      ? const Color(0xFF246046)
-                      : const Color(0xFF9A3627),
-                  stroke: 2,
-                  strokeColor: Colors.white,
-                ),
-              ],
-            ),
-          ),
-        );
-        if (mounted && _controller == controller) _routePins[origin] = pin;
-      } catch (error) {
-        debugPrint('길찾기 핀 갱신 실패: $error');
-      }
-    });
-  }
-
-  void _syncSearchPins(KakaoMapController controller) {
-    _updateRoutePin(
-      controller,
-      origin: true,
-      place: _tabIndex == 1 ? _origin : null,
-    );
-    _updateRoutePin(
-      controller,
-      origin: false,
-      place: _tabIndex == 1 ? _destination : null,
-    );
-  }
-
   void _onSavedExampleSelected(bool selected) {
     if (_savedExampleSelected == selected) return;
-    _savedExampleSelected = selected;
-    _syncSavedRouteMap();
+    setState(() {
+      _savedExampleSelected = selected;
+      _routeCameraView = null;
+    });
+    _mapOverlays.syncSavedRoute();
   }
 
-  void _syncSavedRouteMap() {
+  void _clearRouteCameraSelection() {
+    if (_routeCameraView != null) setState(() => _routeCameraView = null);
+  }
+
+  Future<void> _moveCameraToRoute() async {
     final controller = _controller;
-    if (controller == null) return;
-    final revision = ++_savedRouteRevision;
-    bool hasMap() => mounted && identical(_controller, controller);
-    bool isCurrent() => hasMap() && revision == _savedRouteRevision;
+    final endpoints = _activeRouteEndpoints;
+    if (controller == null || endpoints == null || _movingRouteCamera) return;
 
-    _savedRouteUpdates = _savedRouteUpdates.then((_) async {
-      if (!isCurrent()) return;
-      try {
-        while (_savedRouteRemovals.isNotEmpty) {
-          await _savedRouteRemovals.last();
-          if (!hasMap()) return;
-          _savedRouteRemovals.removeLast();
-        }
-        if (!isCurrent() || !_showSavedExample) return;
-        final example = await _savedExample;
-        if (!isCurrent()) return;
-        final origin = journeyPosition(example['origin']);
-        final destination = journeyPosition(example['destination']);
-        if (origin == null || destination == null) return;
-        final candidates = example['candidates'];
-        final candidate = candidates is List
-            ? candidates.whereType<Map<String, dynamic>>().firstOrNull
-            : null;
-        final detail = await loadJourneyExampleDetail(
-          searchId: example['search_id'],
-          candidateId: candidate?['candidate_id'],
-        );
-        if (!isCurrent()) return;
-        final route = detail?['candidate'];
-        final lines = [
-          if (route is Map<String, dynamic>)
-            for (final segment in journeySegments(route))
-              if (segment['is_actual_shape'] == true)
-                if (journeyShapePoints(segment) case final points?)
-                  (
-                    points: points,
-                    style: PolylineStyle(journeySegmentColor(segment), 4),
-                  ),
-        ];
-        if (lines.isEmpty && origin != destination) {
-          lines.add((
-            points: [origin, destination],
-            style: _savedRouteLineStyle,
-          ));
-        }
+    final next = _routeCameraView?.next ?? RouteCameraView.overview;
+    final update = next.cameraUpdate(endpoints.origin, endpoints.destination);
 
-        for (final (position, isOrigin) in [
-          (origin, true),
-          (destination, false),
-        ]) {
-          final pin = await controller.labelLayer.addPoi(
-            position,
-            id: isOrigin ? 'saved-route-origin' : 'saved-route-destination',
-            text: isOrigin ? '출발지' : '도착지',
-            rank: 9000,
-            style: _savedRoutePinStyles.putIfAbsent(
-              isOrigin,
-              () => PoiStyle(
-                icon: KImage.fromAsset(
-                  'assets/images/location-pin.png',
-                  28,
-                  36,
-                ),
-                anchor: const KPoint(0.5, 1.0),
-                textStyle: [
-                  PoiTextStyle(
-                    size: 15,
-                    color: isOrigin
-                        ? const Color(0xFF246046)
-                        : const Color(0xFF9A3627),
-                    stroke: 2,
-                    strokeColor: Colors.white,
-                  ),
-                ],
-              ),
-            ),
-          );
-          if (!hasMap()) return;
-          _savedRouteRemovals.add(pin.remove);
-          if (!isCurrent()) return;
-        }
-        for (final (index, segment) in lines.indexed) {
-          final line = await controller.shapeLayer.addPolylineShape(
-            MapPoint(segment.points),
-            segment.style,
-            PolylineCap.round,
-            id: index == 0 ? 'saved-route-line' : 'saved-route-line-$index',
-          );
-          if (!hasMap()) return;
-          _savedRouteRemovals.add(line.remove);
-          if (!isCurrent()) return;
-        }
-        if (!isCurrent()) return;
-        if (_gpsSelected) setState(() => _gpsSelected = false);
-        final points = {
-          origin,
-          destination,
-          for (final line in lines) ...line.points,
-        };
-        await controller.moveCamera(
-          points.length == 1
-              ? CameraUpdate.newCenterPosition(origin)
-              : CameraUpdate.fitMapPoints(points.toList(), padding: 120),
-        );
-      } catch (error) {
-        debugPrint('내 경로 지도 갱신 실패: $error');
+    _location.clearSelection();
+    if (_tabIndex == _searchTabIndex) {
+      FocusScope.of(context).unfocus();
+      if (_routeSheet.heightFraction > 0) {
+        _routeSheet.moveTo(RouteSheetPosition.hidden);
       }
+    }
+    setState(() {
+      _routeCameraView = next;
+      _movingRouteCamera = true;
     });
+    try {
+      await controller.moveCamera(
+        update,
+        animation: const CameraAnimation(350),
+      );
+    } catch (_) {
+      if (!mounted || _controller != controller || _routeCameraView != next) {
+        return;
+      }
+      _clearRouteCameraSelection();
+      _showLocationMessage('경로 위치로 지도 이동에 실패했습니다.');
+    } finally {
+      if (mounted) setState(() => _movingRouteCamera = false);
+    }
   }
 
   Future<void> _moveCameraToSearchResult(
@@ -488,329 +302,89 @@ class _MyRoutesScreenState extends State<MyRoutesScreen>
     }
   }
 
-  // Geolocator
-  Poi? _myLocationPoi; // 지도에 추가한 파란 점 객체
-  geo.Position? _currentPosition; // 최근 수신한 위치
+  Future<KImage?> _buildRoutePinIcon(String label) async {
+    final asset = ExactAssetImage(
+      'assets/images/location-pin.png',
+      bundle: DefaultAssetBundle.of(context),
+    );
+    await precacheImage(asset, context);
+    if (!mounted) return null;
 
-  StreamSubscription<void>? _positionSubscription; // 실시간 위치 수신을 중단할 때 사용할 구독
-
-  bool _isLocating = false; // 권한 확인 및 최초 위치 조회 진행여부
-  bool _gpsSelected = false;
-  bool _isForeground = true; // 앱이 화면에 있는지 여부
-  int _locationGeneration = 0; // 중단 전에 시작된 작업의 늦은 결과를 구분
+    return KImage.fromWidget(
+      Stack(
+        fit: StackFit.expand,
+        children: [
+          Image(image: asset, fit: BoxFit.fill),
+          Positioned(
+            top: 6,
+            left: 0,
+            right: 0,
+            height: 13,
+            child: Center(
+              child: Text(
+                label,
+                style: const TextStyle(
+                  fontFamily: 'Pretendard',
+                  fontSize: 9,
+                  fontWeight: FontWeight.w700,
+                  height: 1,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+      const Size(26, 33),
+      context: context,
+    );
+  }
 
   void _onMapReady(KakaoMapController controller) async {
     if (!mounted) return; // 이 State가 위젯 트리에 연결되어 있는지 확인
     if (_controller == controller) return;
 
-    if (_controller != null) _stopLocation();
-    _routePins.clear();
-    _routePinStyles.clear();
-    _savedRouteRemovals.clear();
-    _savedRoutePinStyles.clear();
-    _savedRouteLineStyle = PolylineStyle(_brand, 4);
+    _mapOverlays.attach(controller);
     setState(() {
       _controller = controller;
-      _locationDotStyle = PoiStyle(
-        icon: KImage.fromAsset('assets/images/current-pin.png', 24, 24),
-        anchor: const KPoint(0.5, 0.5),
-      );
-      _locationHeadingStyle = PoiStyle(
-        icon: KImage.fromAsset('assets/images/current-heading.png', 40, 40),
-        anchor: const KPoint(0.5, 0.5),
-      );
-      _myLocationPoi = null;
+      _location.attach(controller);
+      _routeCameraView = null;
     });
     debugPrint('거슬렁 카카오맵 준비 완료');
 
-    _syncSearchPins(controller);
-    _syncSavedRouteMap();
+    _mapOverlays.syncSearchPins();
+    _mapOverlays.syncSavedRoute();
 
     final selected = _selectedSearchResult;
-    if (_tabIndex == 1 && selected != null) {
+    if (_tabIndex == _searchTabIndex && selected != null) {
       await _moveCameraToSearchResult(controller, selected);
     }
-    await _startLocation(
+    await _location.start(
       shouldMoveCamera: () =>
           !_showSavedExample &&
           (_tabIndex == 0 || _selectedSearchResult == null),
     );
   }
 
-  // geolocator
-  // 위치 서비스와 권한을 확인하는 함수
   void _showLocationMessage(String message) {
     if (!mounted) return;
 
     GlassToast.show(context, message: message, type: GlassToastType.info);
   }
 
-  Future<bool> _checkLocationPermission({
-    required bool requestPermission,
-  }) async {
-    final enabled = await geo.Geolocator.isLocationServiceEnabled();
-
-    if (!enabled) {
-      _showLocationMessage('기기 설정에서 위치 기능을 켠 뒤 현재 위치 버튼을 눌러 주세요.');
-      return false;
-    }
-
-    var permission = await geo.Geolocator.checkPermission();
-
-    if (permission == geo.LocationPermission.denied && requestPermission) {
-      permission = await geo.Geolocator.requestPermission();
-    }
-
-    if (permission == geo.LocationPermission.deniedForever) {
-      _showLocationMessage('Android 설정 → 앱 → salmon → 권한에서 위치를 허용해 주세요.');
-      return false;
-    }
-
-    final allowed =
-        permission == geo.LocationPermission.whileInUse ||
-        permission == geo.LocationPermission.always;
-
-    if (!allowed) {
-      _showLocationMessage('현재 위치를 표시하려면 위치 권한이 필요합니다.');
-    }
-
-    return allowed;
-  }
-
-  // 좌표를 받아 파란 객체를 만들거나 이동시키는 함수
-  bool _isLocationActive(int generation) {
-    return mounted && _isForeground && generation == _locationGeneration;
-  }
-
-  Future<void> _showMyLocation(geo.Position position, int generation) async {
-    final controller = _controller;
-
-    if (controller == null || !_isLocationActive(generation)) {
-      return;
-    }
-
-    final coordinate = LatLng(position.latitude, position.longitude);
-
-    final existingPoi = _myLocationPoi;
-
-    if (existingPoi != null) {
-      // 두 번째 위치부터는 기존 점을 이동시킵니다. 이후에는 기존 객체를 이동
-      await existingPoi.move(coordinate);
-    } else {
-      // 처음 받은 위치에는 파란 점을 생성합니다. 최초 한 번만 생성
-
-      if (!_isLocationActive(generation)) return;
-
-      final poi = await controller.labelLayer.addPoi(
-        coordinate,
-        id: 'my-location',
-        rank: 10000,
-        style: _locationDotStyle!,
-        transform: TransformMethod.absoluteRoatation,
-      );
-
-      if (!_isLocationActive(generation)) return;
-
-      _myLocationPoi = poi;
-    }
-
-    if (!_isLocationActive(generation)) return;
-
-    _currentPosition = position;
-
-    debugPrint(
-      '현재 위치 갱신 '
-      '${position.latitude}, ${position.longitude} '
-      '정확도 ${position.accuracy}m',
-    );
-  }
-
-  void _startHeading(geo.Position position, int generation) {
-    final poi = _myLocationPoi;
-    if (poi == null ||
-        kIsWeb ||
-        (defaultTargetPlatform != TargetPlatform.android &&
-            defaultTargetPlatform != TargetPlatform.iOS)) {
-      return;
-    }
-
-    final dotStyle = _locationDotStyle!;
-    final headingStyle = _locationHeadingStyle!;
-    _headingSubscription = _headingChannel
-        .receiveBroadcastStream({
-          'latitude': position.latitude,
-          'longitude': position.longitude,
-          'altitude': position.altitude,
-        })
-        .map((event) {
-          final degrees = (event as num?)?.toDouble();
-          return degrees != null && degrees.isFinite ? degrees : null;
-        })
-        .distinct()
-        .asyncMap<void>((degrees) async {
-          if (!_isLocationActive(generation)) return;
-          if (degrees == null) {
-            if (poi.style != dotStyle) await poi.changeStyles(dotStyle);
-            return;
-          }
-
-          // Kakao Maps uses radians clockwise from north.
-          final rotation = ((degrees + 180) % 360 - 180) * math.pi / 180;
-          await poi.rotate(rotation);
-          if (_isLocationActive(generation) && poi.style != headingStyle) {
-            await poi.changeStyles(headingStyle);
-          }
-        })
-        .listen(
-          (_) {},
-          onError: (Object error) => debugPrint('방향 수신 오류 $error'),
-        );
-  }
-
-  // 카메라 이동과 위치 수신 중단 함수
-  Future<bool> _moveCameraToMyLocation(int generation) async {
-    final controller = _controller;
-    final position = _currentPosition;
-
-    if (controller == null ||
-        position == null ||
-        !_isLocationActive(generation)) {
-      return false;
-    }
-
-    await controller.moveCamera(
-      CameraUpdate.newCenterPosition(
-        LatLng(position.latitude, position.longitude),
-      ),
-      animation: const CameraAnimation(500),
-    );
-    return _isLocationActive(generation) && _controller == controller;
-  }
-
-  void _stopLocation() {
-    _locationGeneration++;
-
-    final subscription = _positionSubscription;
-    final headingSubscription = _headingSubscription;
-
-    _positionSubscription = null;
-    _headingSubscription = null;
-    _currentPosition = null;
-    _isLocating = false;
-    _gpsSelected = false;
-
-    if (subscription != null) {
-      unawaited(subscription.cancel());
-    }
-    if (headingSubscription != null) {
-      unawaited(headingSubscription.cancel());
-    }
-  }
-
-  // 위치 수신을 시작하고 카메라까지 이동했으면 true를 반환합니다.
-  Future<bool> _startLocation({
-    bool Function()? shouldMoveCamera,
-    bool requestPermission = true,
-  }) async {
-    if (!mounted || !_isForeground || _controller == null || _isLocating) {
-      return false;
-    }
-
-    final generation = _locationGeneration;
-
-    setState(() {
-      _isLocating = true;
-    });
-
-    try {
-      final allowed = await _checkLocationPermission(
-        requestPermission: requestPermission,
-      );
-
-      if (!allowed || !_isLocationActive(generation)) {
-        return false;
-      }
-
-      // 이미 위치를 수신 중이면 최근 위치로 카메라만 이동합니다.
-      if (_positionSubscription != null && _currentPosition != null) {
-        if (shouldMoveCamera?.call() ?? false) {
-          return await _moveCameraToMyLocation(generation);
-        }
-        return false;
-      }
-
-      // 최초 위치를 한 번 조회합니다.
-      final firstPosition = await geo.Geolocator.getCurrentPosition(
-        locationSettings: const geo.LocationSettings(
-          accuracy: geo.LocationAccuracy.high,
-          timeLimit: Duration(seconds: 20),
-        ),
-      );
-
-      if (!_isLocationActive(generation)) return false;
-
-      await _showMyLocation(firstPosition, generation);
-
-      if (!_isLocationActive(generation)) return false;
-
-      _startHeading(firstPosition, generation);
-
-      // 이후 위치 변경을 계속 수신합니다.
-      _positionSubscription =
-          geo.Geolocator.getPositionStream(
-                locationSettings: const geo.LocationSettings(
-                  accuracy: geo.LocationAccuracy.high,
-                  distanceFilter: 3,
-                ),
-              )
-              .asyncMap<void>((position) {
-                return _showMyLocation(position, generation);
-              })
-              .listen(
-                (_) {},
-                onError: (Object error, StackTrace stackTrace) {
-                  if (!_isLocationActive(generation)) return;
-
-                  _stopLocation();
-
-                  setState(() {});
-
-                  debugPrint('위치 수신 오류 $error');
-                  debugPrintStack(stackTrace: stackTrace);
-
-                  _showLocationMessage('위치 수신이 중단됐습니다. 현재 위치 버튼으로 다시 시도하세요.');
-                },
-                cancelOnError: true,
-              );
-
-      if (shouldMoveCamera?.call() ?? false) {
-        return await _moveCameraToMyLocation(generation);
-      }
-    } on TimeoutException {
-      if (_isLocationActive(generation)) {
-        _showLocationMessage('위치를 받지 못했습니다. 위치 설정과 에뮬레이터 좌표를 확인해 주세요.');
-      }
-    } catch (error, stackTrace) {
-      if (_isLocationActive(generation)) {
-        debugPrint('위치 처리 실패 $error');
-        debugPrintStack(stackTrace: stackTrace);
-
-        _showLocationMessage('위치 처리 중 오류가 발생했습니다. 실행 로그를 확인해 주세요.');
-      }
-    } finally {
-      if (_isLocationActive(generation)) {
-        setState(() {
-          _isLocating = false;
-        });
-      }
-    }
-    return false;
-  }
-
   // 앱 상태변화와 페이지 종료 처리
   @override
   void initState() {
     super.initState();
+    _savedExample.then<void>((example) {
+      final origin = journeyPosition(example['origin']);
+      final destination = journeyPosition(example['destination']);
+      if (!mounted || origin == null || destination == null) return;
+      setState(() {
+        _savedRouteEndpoints = (origin: origin, destination: destination);
+      });
+    }, onError: (Object _) {});
+    _placeSuggestions.addListener(() => setState(() {}));
     _originFocus.addListener(() => _startPlaceEdit(true));
     _destinationFocus.addListener(() => _startPlaceEdit(false));
     _busNumberFocus.addListener(() {
@@ -821,30 +395,46 @@ class _MyRoutesScreenState extends State<MyRoutesScreen>
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final visible = ModalRoute.isCurrentOf(context) ?? true;
+    if (visible == _locationRouteVisible) return;
+    _locationRouteVisible = visible;
+    _syncLocationVisibility();
+  }
+
+  void _syncLocationVisibility() {
+    if (_locationRouteVisible && _locationAppVisible) {
+      _location.resume();
+    } else {
+      _location.pause();
+    }
+  }
+
+  @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.hidden ||
         state == AppLifecycleState.detached) {
-      _isForeground = false;
-      _stopLocation();
+      _locationAppVisible = false;
+      _syncLocationVisibility();
       return;
     }
 
     if (state == AppLifecycleState.resumed) {
-      _isForeground = true;
-
-      unawaited(_startLocation(requestPermission: false));
+      _locationAppVisible = true;
+      _syncLocationVisibility();
     }
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _routeSheet.dispose();
 
-    _stopLocation();
-    _searchDebounce?.cancel();
-    _searchCancelToken?.cancel();
-    _searchDio.close(force: true);
+    _mapOverlays.dispose();
+    _location.dispose();
+    _placeSuggestions.dispose();
     _originController.dispose();
     _destinationController.dispose();
     _originFocus.dispose();
@@ -854,69 +444,159 @@ class _MyRoutesScreenState extends State<MyRoutesScreen>
     super.dispose();
   }
 
-  // 현재 위치 버튼용 함수
-  Future<void> _goToMyLocation() async {
-    if (_controller == null || _isLocating || !_isForeground) return;
+  // 탭을 바꾸면 지도 오버레이와 길찾기 시트도 함께 갱신합니다.
+  void _onTabSelected(int index) {
+    if (index == _tabIndex) {
+      if (index == _searchTabIndex) {
+        _routeSheet.toggle();
+      }
+      return;
+    }
+    FocusScope.of(context).unfocus();
+    if (_editingOrigin != null) _cancelPlaceEdit();
 
-    final generation = _locationGeneration;
-    setState(() => _gpsSelected = true);
-    final moved = await _startLocation(shouldMoveCamera: () => _gpsSelected);
-    if (!moved && _isLocationActive(generation) && _gpsSelected) {
-      setState(() => _gpsSelected = false);
+    setState(() {
+      _tabIndex = index;
+      _routeCameraView = null;
+    });
+    _mapOverlays.syncSearchPins();
+    _mapOverlays.syncSavedRoute();
+    _routeSheet.moveTo(
+      index == _searchTabIndex
+          ? RouteSheetPosition.half
+          : RouteSheetPosition.hidden,
+    );
+  }
+
+  InputDecoration _fieldDecoration(String hint, IconData icon) {
+    final border = OutlineInputBorder(borderRadius: BorderRadius.circular(12));
+    return InputDecoration(
+      hintText: hint,
+      prefixIcon: Icon(icon),
+      filled: true,
+      fillColor: Colors.white,
+      border: border,
+      enabledBorder: border.copyWith(
+        borderSide: const BorderSide(color: Color(0xFFDADCE0)),
+      ),
+      focusedBorder: border.copyWith(
+        borderSide: const BorderSide(color: _brand, width: 1.5),
+      ),
+    );
+  }
+
+  // 장소 입력이 바뀌면 이전 선택과 지도 핀을 지웁니다.
+  void _onPlaceChanged(
+    bool origin,
+    String value, {
+    bool updateSuggestions = true,
+  }) {
+    final previous = origin ? _origin : _destination;
+    if (previous != null) {
+      setState(() {
+        if (origin) {
+          _origin = null;
+        } else {
+          _destination = null;
+        }
+        if (identical(_selectedSearchResult, previous)) {
+          _selectedSearchResult = _origin ?? _destination;
+        }
+        _routeCameraView = null;
+      });
+      _mapOverlays.updateSearchPin(origin: origin, place: null);
+    }
+    if (updateSuggestions) {
+      _editingOrigin = origin;
+      _onSearchChanged(value);
     }
   }
 
-  void _onCameraMoveStart(GestureType gesture) {
-    if (gesture != GestureType.unknown && _gpsSelected) {
-      setState(() => _gpsSelected = false);
-    }
+  Widget _placeField({required bool origin}) {
+    final label = origin ? '출발지' : '목적지';
+    final controller = origin ? _originController : _destinationController;
+    final focusNode = origin ? _originFocus : _destinationFocus;
+    return TextField(
+      key: ValueKey(label),
+      decoration:
+          _fieldDecoration(
+            label,
+            origin ? Icons.my_location : Icons.place_outlined,
+          ).copyWith(
+            suffixIcon: SearchFieldClearButton(
+              controller: controller,
+              tooltip: '$label 지우기',
+              onCleared: () => _onPlaceChanged(
+                origin,
+                '',
+                updateSuggestions:
+                    focusNode.hasFocus || _editingOrigin == origin,
+              ),
+            ),
+          ),
+      controller: controller,
+      focusNode: focusNode,
+      autocorrect: false,
+      textInputAction: TextInputAction.search,
+      onChanged: (value) => _onPlaceChanged(origin, value),
+      onSubmitted: (value) => _onSearchChanged(value, submit: true),
+    );
   }
 
-  // 2. Add MapView Widget
+  Widget _positionMapControls({
+    required Widget controls,
+    required double viewportHeight,
+    required double appBarBottom,
+    required double routeSheetTop,
+    required double right,
+    required double tabBarInset,
+    required double savedCardHeight,
+  }) {
+    return AnimatedBuilder(
+      animation: _routeSheet.heightChanges,
+      child: controls,
+      builder: (context, child) {
+        final keyboard = MediaQuery.viewInsetsOf(context).bottom;
+        final sheetViewport = viewportHeight - routeSheetTop - keyboard;
+        final sheetHeight = _tabIndex == _searchTabIndex && sheetViewport > 48
+            ? sheetViewport * _routeSheet.heightFraction
+            : 0.0;
+        final cardOffset = _tabIndex == 0
+            ? savedCardHeight + SavedRoutesOverlay.paginationHeight + 8
+            : 0.0;
+        final restingBottom =
+            math.max(keyboard, tabBarInset) + _mapButtonGap + cardOffset;
+        // 시트를 끝까지 올려도 지도 버튼 두 개가 모두 보입니다.
+        final bottom = math.min(
+          math.max(restingBottom, keyboard + sheetHeight + _mapButtonGap),
+          math.max(0.0, viewportHeight - appBarBottom - _mapControlsHeight),
+        );
+        return Padding(
+          padding: EdgeInsets.only(right: right, bottom: bottom),
+          child: Align(alignment: Alignment.bottomRight, child: child),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final barGlassSettings = LiquidGlassSettings.ios27Light.copyWith(
-      glassColor: const Color(0xBFFFFFFF),
-      rimShade: 1.7,
-      rimShadeEnds: 0.45,
-    );
-    const mapButtonSize = 48.0;
-    GlassIconButton glassIconButton({
-      required IconData icon,
-      required String label,
-      required VoidCallback? onPressed,
-      double size = mapButtonSize,
-      Color? iconColor,
-    }) {
-      return GlassIconButton(
-        icon: Icon(icon, color: iconColor),
-        quality: GlassQuality.standard,
-        size: size,
-        semanticLabel: label,
-        onPressed: onPressed,
-        surfaceStyle: GlassSurfaceStyle.glass,
-        style: GlassButtonStyle.filled,
-        settings: barGlassSettings,
-      );
-    }
-
-    const searchTabIndex = 1;
-    final keyboardHeight = MediaQuery.viewInsetsOf(context).bottom;
-    final routeSheetVisible = _routeSheetState != GlassSheetState.hidden;
+    final safeArea = MediaQuery.viewPaddingOf(context);
     final pageFocusScope = FocusScope.of(context);
     const appBarPadding = EdgeInsets.symmetric(horizontal: 20, vertical: 12);
     final appBar = GlassAppBar(
+      toolbarHeight: _appBarButtonSize,
       padding: appBarPadding,
       title: const Text(
         '거슬렁',
-        style: TextStyle(fontSize: 32, fontWeight: FontWeight.w600),
+        style: TextStyle(fontSize: 36, fontWeight: FontWeight.w600),
       ),
       centerTitle: false,
       actions: [
-        glassIconButton(
+        AppMapIconButton(
           icon: Icons.notifications_none_rounded,
           label: '알림 내역',
-          size: 44,
+          size: _appBarButtonSize,
           onPressed: () {
             GlassToast.show(
               context,
@@ -925,10 +605,10 @@ class _MyRoutesScreenState extends State<MyRoutesScreen>
             );
           },
         ),
-        glassIconButton(
+        AppMapIconButton(
           icon: Icons.settings,
           label: '설정',
-          size: 44,
+          size: _appBarButtonSize,
           onPressed: () {
             FocusScope.of(context).unfocus();
             Navigator.of(context).push<void>(
@@ -938,141 +618,129 @@ class _MyRoutesScreenState extends State<MyRoutesScreen>
         ),
       ],
     );
+    final appBarHeight = appBar.preferredSize.height + appBarPadding.vertical;
     const tabWidth = 150.0;
     const tabs = [
       GlassTab(icon: Icon(Icons.route), label: '내 경로'),
       GlassTab(icon: Icon(Icons.map), label: '길찾기'),
     ];
     final tabBar = GlassTabBar.bottom(
-      quality: GlassQuality.standard,
+      textStyle: TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
+      quality: GlassQuality.minimal,
       tabWidth: tabWidth,
-      settings: barGlassSettings,
+      settings: appMapGlassSettings,
       selectedIconColor: _brand,
       selectedLabelColor: _brand,
       tabs: tabs,
       selectedIndex: _tabIndex,
-      onTabSelected: (index) {
-        if (index == _tabIndex) {
-          if (index == searchTabIndex) {
-            _routeSheet.snapToState(
-              _routeSheetState == GlassSheetState.hidden
-                  ? GlassSheetState.half
-                  : GlassSheetState.hidden,
-            );
-          }
-          return;
-        }
-        FocusScope.of(context).unfocus();
-        if (_editingOrigin != null) _cancelPlaceEdit();
-
-        setState(() {
-          _tabIndex = index;
-        });
-        final controller = _controller;
-        if (controller != null) _syncSearchPins(controller);
-        _syncSavedRouteMap();
-        _routeSheet.snapToState(
-          index == searchTabIndex
-              ? GlassSheetState.half
-              : GlassSheetState.hidden,
-        );
-      },
+      onTabSelected: _onTabSelected,
     );
 
-    // UI Build
-    return GlassScaffold(
+    return Scaffold(
+      extendBody: true,
+      extendBodyBehindAppBar: true,
       resizeToAvoidBottomInset:
           false, // 키보드가 표시돼도 본문을 줄이지 않고, 키보드가 본문 위를 덮도록 한다.
-      edgeStyle: GlassScrollEdgeStyle.blur,
-      bottomEdgeFade: false,
-      maxSigma: 24.0,
-      appBar: appBar,
-      bottomBar: PreferredSize(
-        preferredSize: tabBar.preferredSize,
-        child: Center(
-          heightFactor: 1,
-          child: SizedBox(
-            width: tabWidth * tabs.length + 2 * tabBar.horizontalPadding,
-            child: tabBar,
+      appBar: PreferredSize(
+        preferredSize: Size.fromHeight(appBarHeight),
+        child: ClipRect(
+          child: BackdropFilter(
+            filter: ui.ImageFilter.blur(sigmaX: 0, sigmaY: 0),
+            child: ColoredBox(color: const ui.Color(0x02FFFFFF), child: appBar),
+          ),
+        ),
+      ),
+      bottomNavigationBar: SafeArea(
+        top: false,
+        left: false,
+        right: false,
+        bottom: defaultTargetPlatform == TargetPlatform.android,
+        child: GlassIsolationScope(
+          isolated: true,
+          defaultQuality: GlassQuality.minimal,
+          child: Center(
+            heightFactor: 1,
+            child: SizedBox(
+              width: tabWidth * tabs.length + 2 * tabBar.horizontalPadding,
+              child: Stack(
+                children: [
+                  tabBar,
+                  Positioned(
+                    left: tabBar.horizontalPadding,
+                    right: tabBar.horizontalPadding,
+                    top: tabBar.verticalPadding,
+                    height: tabBar.barHeight,
+                    child: IgnorePointer(
+                      child: DecoratedBox(
+                        decoration: ShapeDecoration(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(
+                              tabBar.barBorderRadius,
+                            ),
+                            side: appMapGlassOutline,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
       ),
       body: LayoutBuilder(
         builder: (context, constraints) {
-          final safeArea = MediaQuery.viewPaddingOf(context);
-          final appBarBottom =
-              safeArea.top +
-              appBar.preferredSize.height +
-              appBarPadding.vertical;
+          final appBarBottom = safeArea.top + appBarHeight;
+          final routeSheetTop =
+              appBarBottom + _mapControlsHeight + _mapButtonGap;
           final mapControlsRight = safeArea.right + 20;
           final tabBarInset = safeArea.bottom + tabBar.preferredSize.height;
           final savedCardHeight = math.min(
             SavedRoutesOverlay.maxCardHeight,
             math.max(
               0.0,
-              constraints.maxHeight - appBarBottom - tabBarInset - 120,
+              constraints.maxHeight -
+                  appBarBottom -
+                  tabBarInset -
+                  SavedRoutesOverlay.paginationHeight -
+                  120,
             ),
           );
-          final gpsBottom =
-              math.max(keyboardHeight, tabBarInset) +
-              12 +
-              (_tabIndex == 0 ? savedCardHeight + 8 : 0);
-          final sheetHeight = math.max(
-            0.0,
-            constraints.maxHeight - appBarBottom - keyboardHeight,
+          final mapControls = Column(
+            mainAxisSize: MainAxisSize.min,
+            spacing: _mapButtonGap,
+            children: [
+              AppMapIconButton(
+                icon: Icons.route_outlined,
+                label: '경로 위치 보기',
+                size: _mapButtonSize,
+                iconColor: _routeCameraView != null ? _brand : null,
+                onPressed:
+                    _controller == null ||
+                        _activeRouteEndpoints == null ||
+                        _location.isLocating ||
+                        _movingRouteCamera
+                    ? null
+                    : _moveCameraToRoute,
+              ),
+              AppMapIconButton(
+                icon: Icons.my_location,
+                label: '현재 위치로 이동',
+                size: _mapButtonSize,
+                iconColor: _location.isSelected ? _brand : null,
+                onPressed:
+                    _controller == null ||
+                        _location.isLocating ||
+                        _movingRouteCamera
+                    ? null
+                    : () {
+                        _clearRouteCameraSelection();
+                        _location.recenter();
+                      },
+              ),
+            ],
           );
-
-          InputDecoration fieldDecoration(String hint, IconData icon) {
-            final border = OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-            );
-            return InputDecoration(
-              hintText: hint,
-              prefixIcon: Icon(icon),
-              filled: true,
-              fillColor: Colors.white,
-              border: border,
-              enabledBorder: border.copyWith(
-                borderSide: const BorderSide(color: Color(0xFFDADCE0)),
-              ),
-              focusedBorder: border.copyWith(
-                borderSide: const BorderSide(color: _brand, width: 1.5),
-              ),
-            );
-          }
-
-          Widget placeField({required bool origin}) {
-            return TextField(
-              decoration: fieldDecoration(
-                origin ? '출발지' : '목적지',
-                origin ? Icons.my_location : Icons.place_outlined,
-              ),
-              controller: origin ? _originController : _destinationController,
-              focusNode: origin ? _originFocus : _destinationFocus,
-              autocorrect: false,
-              textInputAction: TextInputAction.search,
-              onChanged: (value) {
-                _editingOrigin = origin;
-                final previous = origin ? _origin : _destination;
-                if (origin) {
-                  _origin = null;
-                } else {
-                  _destination = null;
-                }
-                if (previous != null) {
-                  if (identical(_selectedSearchResult, previous)) {
-                    _selectedSearchResult = _origin ?? _destination;
-                  }
-                  final controller = _controller;
-                  if (controller != null) {
-                    _updateRoutePin(controller, origin: origin, place: null);
-                  }
-                }
-                _onSearchChanged(value);
-              },
-              onSubmitted: (value) => _onSearchChanged(value, submit: true),
-            );
-          }
 
           return Stack(
             children: [
@@ -1085,23 +753,15 @@ class _MyRoutesScreenState extends State<MyRoutesScreen>
                     mapType: MapType.normal,
                   ),
                   onMapReady: _onMapReady,
-                  onCameraMoveStart: _onCameraMoveStart,
+                  onCameraMoveStart: (gesture) {
+                    _location.onCameraMoveStart(gesture);
+                    if (gesture != GestureType.unknown) {
+                      _clearRouteCameraSelection();
+                    }
+                  },
                   onMapError: (error) {
                     debugPrint('Salmon 카카오맵 오류: $error');
                   },
-                ),
-              ),
-
-              Positioned(
-                right: mapControlsRight,
-                bottom: gpsBottom,
-                child: glassIconButton(
-                  icon: Icons.my_location,
-                  label: '현재 위치로 이동',
-                  iconColor: _gpsSelected ? _brand : null,
-                  onPressed: _controller == null || _isLocating
-                      ? null
-                      : _goToMyLocation,
                 ),
               ),
 
@@ -1113,88 +773,67 @@ class _MyRoutesScreenState extends State<MyRoutesScreen>
                 child: Offstage(
                   offstage: _tabIndex != 0,
                   child: SavedRoutesOverlay(
-                    settings: barGlassSettings,
+                    settings: appMapGlassSettings,
                     cardHeight: savedCardHeight,
                     example: _savedExample,
                     onExampleSelected: _onSavedExampleSelected,
                   ),
                 ),
               ),
-
-              // GlassScaffold paints the bottom bar above this body stack.
-              if (sheetHeight > 48)
-                Positioned.fill(
-                  top: appBarBottom,
-                  bottom: keyboardHeight,
-                  child: ClipRect(
-                    child: Stack(
-                      children: [
-                        GlassModalSheet(
-                          quality: GlassQuality.minimal,
-                          controller: _routeSheet,
-                          initialState: _routeSheetState,
-                          halfSize: math.min(
-                            constraints.maxHeight * 0.46,
-                            sheetHeight * 0.85,
+              Positioned.fill(
+                top: routeSheetTop,
+                child: RouteSheet(
+                  controller: _routeSheet,
+                  availableHeight: constraints.maxHeight - routeSheetTop,
+                  halfHeight: constraints.maxHeight * 0.46,
+                  bottomInset: tabBarInset + safeArea.bottom,
+                  pageFocusScope: pageFocusScope,
+                  builder: (scrollController, bottomInset, keyboardVisible) =>
+                      RouteSearchPanel(
+                        scrollController: scrollController,
+                        bottomInset: bottomInset,
+                        keyboardVisible: keyboardVisible,
+                        origin: _placeField(origin: true),
+                        destination: _placeField(origin: false),
+                        busField: BusRouteSearchField(
+                          decoration: _fieldDecoration(
+                            '선호 광역버스 (선택)',
+                            Icons.directions_bus_outlined,
                           ),
-                          fullSize: sheetHeight,
-                          resistance: 0,
-                          horizontalMargin: 0,
-                          bottomMargin: 0,
-                          topBorderRadius: 24,
-                          bottomBorderRadius: 0,
-                          fullTopBorderRadius: null,
-                          settings: barGlassSettings.copyWith(
-                            glassColor: Colors.white,
-                            blur: 0,
-                            frost: 0,
-                          ),
-                          enableInteractionGlow: false,
-                          enableSaturationGlow: false,
-                          maintainContentGlass: false,
-                          onStateChanged: _onRouteSheetStateChanged,
-                          // Inputs use the page focus scope so the keyboard
-                          // does not trigger the sheet's default full snap.
-                          child: Focus(
-                            parentNode: pageFocusScope,
-                            canRequestFocus: false,
-                            descendantsAreFocusable: routeSheetVisible,
-                            child: RouteSearchPanel(
-                              bottomInset: keyboardHeight > 0
-                                  ? 0
-                                  : tabBarInset + safeArea.bottom,
-                              keyboardVisible: keyboardHeight > 0,
-                              origin: placeField(origin: true),
-                              destination: placeField(origin: false),
-                              busField: BusRouteSearchField(
-                                decoration: fieldDecoration(
-                                  '선호 광역버스 (선택)',
-                                  Icons.directions_bus_outlined,
-                                ),
-                                controller: _busNumberController,
-                                focusNode: _busNumberFocus,
-                                onSelectionChanged: (route) {
-                                  _selectedBusRoute = route;
-                                },
-                              ),
-                              suggestions: _editingOrigin == null
-                                  ? null
-                                  : RouteSearchScreen(
-                                      isSearching: _isSearching,
-                                      message: _searchMessage,
-                                      results: _searchResults,
-                                      onResultSelected: _selectSearchResult,
-                                    ),
-                              onSearch: _origin == null || _destination == null
-                                  ? null
-                                  : _openRouteResults,
-                            ),
-                          ),
+                          controller: _busNumberController,
+                          focusNode: _busNumberFocus,
+                          onSelectionChanged: (route) {
+                            _selectedBusRoute = route;
+                          },
                         ),
-                      ],
-                    ),
-                  ),
+                        suggestionsAfterOrigin: _editingOrigin == true,
+                        suggestions: _editingOrigin != null
+                            ? RouteSearchScreen(
+                                isSearching: _placeSuggestions.isSearching,
+                                message: _placeSuggestions.message,
+                                results: _placeSuggestions.results,
+                                onResultSelected: _selectSearchResult,
+                                isLocating: _locatingForPlace,
+                                onCurrentLocation: _selectMyLocation,
+                              )
+                            : null,
+                        onSearch: _origin == null || _destination == null
+                            ? null
+                            : _openRouteResults,
+                      ),
                 ),
+              ),
+              Positioned.fill(
+                child: _positionMapControls(
+                  controls: mapControls,
+                  viewportHeight: constraints.maxHeight,
+                  appBarBottom: appBarBottom,
+                  routeSheetTop: routeSheetTop,
+                  right: mapControlsRight,
+                  tabBarInset: tabBarInset,
+                  savedCardHeight: savedCardHeight,
+                ),
+              ),
             ],
           );
         },

@@ -1,12 +1,20 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart' as geo;
 import 'package:kakao_map_sdk/kakao_map_sdk.dart';
 
 import '../../data/journeys/journey_example_api.dart';
-import '../core/journey_presentation.dart';
+import '../../data/journeys/journey_search_api.dart';
+import '../core/widgets/journey_map_geometry.dart';
+import '../core/widgets/journey_presentation.dart';
 import '../core/widgets/app_primary_button.dart';
+import '../core/widgets/app_map_icon_button.dart';
 import '../core/widgets/journey_recommendation.dart';
+import '../core/widgets/journey_result_card.dart';
+import '../my_routes/map_location_tracker.dart';
+import 'journey_progress.dart';
 import 'journey_preview_map.dart';
-import 'route_guidance_screen.dart';
+import 'journey_step.dart';
 
 typedef JourneyPlace = ({String name, LatLng position});
 
@@ -18,6 +26,7 @@ class RouteDetailScreen extends StatefulWidget {
     required this.destination,
     this.searchId,
     this.candidates = const [],
+    this.journeyClient,
   });
 
   final Map<String, dynamic> route;
@@ -25,16 +34,187 @@ class RouteDetailScreen extends StatefulWidget {
   final JourneyPlace destination;
   final Object? searchId;
   final List<Map<String, dynamic>> candidates;
+  final Dio? journeyClient;
 
   @override
   State<RouteDetailScreen> createState() => _RouteDetailScreenState();
 }
 
-class _RouteDetailScreenState extends State<RouteDetailScreen> {
-  late final _detail = loadJourneyExampleDetail(
-    searchId: widget.searchId,
-    candidateId: widget.route['candidate_id'],
+class _RouteDetailScreenState extends State<RouteDetailScreen>
+    with WidgetsBindingObserver {
+  static const _initialSheetSize = 0.54;
+  static const _minSheetSize = 0.31;
+  static const _maxSheetSize = 0.80;
+  static const _mapEdgeInset = 20.0;
+  static const _mapButtonSize = 48.0;
+  static const _mapButtonGap = 12.0;
+  static const _mapButtonsHeight = 2 * _mapButtonSize + _mapButtonGap;
+  static const _brand = Color(0xFFD9553E);
+  final _sheet = DraggableScrollableController();
+  late final _location = MapLocationTracker(
+    onChanged: () {
+      if (mounted) setState(() {});
+    },
+    onMessage: (message) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(message)));
+    },
+    onPosition: _onPosition,
+    followLocation: true,
   );
+  KakaoMapController? _map;
+  RouteCameraView? _routeCameraView;
+  bool _movingRouteCamera = false;
+  JourneyProgress? _progress;
+  int? _activeSegment;
+  bool _starting = false;
+  bool _guiding = false;
+  bool _resumeFollowing = false;
+  bool _locationRequested = false;
+
+  final _detailCancel = CancelToken();
+  late final _detail = _loadDetail();
+
+  Future<Map<String, dynamic>?> _loadDetail() async {
+    final searchId = widget.searchId;
+    final candidateId = widget.route['candidate_id'];
+    if (searchId is! String || candidateId is! String) return null;
+    final example = await loadJourneyExampleDetail(
+      searchId: searchId,
+      candidateId: candidateId,
+    );
+    final client = widget.journeyClient;
+    if (example != null || client == null || _detailCancel.isCancelled) {
+      return example;
+    }
+    return fetchJourneyDetail(
+      client,
+      searchId: searchId,
+      candidateId: candidateId,
+      cancelToken: _detailCancel,
+    );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (!_locationRequested) return;
+    switch (state) {
+      case AppLifecycleState.hidden:
+        _resumeFollowing = _location.isSelected;
+        _location.pause();
+      case AppLifecycleState.resumed:
+        _location.resume(follow: _resumeFollowing);
+      default:
+        break;
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _detailCancel.cancel();
+    _location.dispose();
+    _sheet.dispose();
+    super.dispose();
+  }
+
+  void _onPosition(geo.Position position) {
+    if (!mounted || (!_starting && !_guiding)) return;
+    final next = _progress?.match(position, _activeSegment);
+    if (next != _activeSegment) setState(() => _activeSegment = next);
+  }
+
+  void _onMapReady(KakaoMapController controller) {
+    if (!mounted) return;
+    final follow = _location.isSelected || _resumeFollowing;
+    _location.attach(controller);
+    setState(() {
+      _map = controller;
+      _routeCameraView = null;
+    });
+    if (_locationRequested) _location.resume(follow: follow);
+  }
+
+  Future<bool> _recenter() {
+    _clearRouteCameraSelection();
+    _locationRequested = true;
+    return _location.recenter();
+  }
+
+  void _clearRouteCameraSelection() {
+    if (_routeCameraView != null) setState(() => _routeCameraView = null);
+  }
+
+  double _maxSheetExtent(BuildContext context, double height) {
+    final appBarBottom = MediaQuery.paddingOf(context).top + kToolbarHeight;
+    final reservedHeight = appBarBottom + _mapButtonsHeight + _mapButtonGap;
+    return (1 - reservedHeight / height).clamp(
+      _initialSheetSize,
+      _maxSheetSize,
+    );
+  }
+
+  Future<void> _startGuidance(List<JourneySegment> segments) async {
+    if (_starting ||
+        _map == null ||
+        _location.isLocating ||
+        _movingRouteCamera) {
+      return;
+    }
+    _progress = JourneyProgress(segments);
+    setState(() => _starting = true);
+    final located = await _recenter();
+    if (!mounted) return;
+    setState(() {
+      _starting = false;
+      _guiding = located;
+      _resumeFollowing = located;
+      if (!located) _activeSegment = null;
+    });
+    if (!located) _location.stop();
+  }
+
+  Future<void> _moveCameraToRoute(LatLng origin, LatLng destination) async {
+    final map = _map;
+    if (map == null || _location.isLocating || _movingRouteCamera) return;
+    final next = _routeCameraView?.next ?? RouteCameraView.overview;
+    _location.clearSelection();
+    _resumeFollowing = false;
+    setState(() {
+      _routeCameraView = next;
+      _movingRouteCamera = true;
+    });
+    if (_sheet.isAttached && _sheet.size > _minSheetSize) {
+      _sheet
+          .animateTo(
+            _minSheetSize,
+            duration: const Duration(milliseconds: 240),
+            curve: Curves.easeOutCubic,
+          )
+          .ignore();
+    }
+    try {
+      await map.moveCamera(
+        next.cameraUpdate(origin, destination),
+        animation: const CameraAnimation(350),
+      );
+    } catch (error) {
+      if (mounted && _map == map && _routeCameraView == next) {
+        _clearRouteCameraSelection();
+      }
+      debugPrint('경로 위치로 지도 이동 실패: $error');
+    } finally {
+      if (mounted) setState(() => _movingRouteCamera = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) => FutureBuilder<Map<String, dynamic>?>(
@@ -95,90 +275,271 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
     ];
     final theme = Theme.of(context);
 
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
+    final timed = segments
+        .where((step) => (journeyMinutes(step) ?? 0) > 0)
+        .toList();
+    final originPosition =
+        journeyPosition(detail?['origin']) ?? origin.position;
+    final destinationPosition =
+        journeyPosition(detail?['destination']) ?? destination.position;
+    final map = loading
+        ? const Center(child: CircularProgressIndicator())
+        : JourneyPreviewMap(
+            origin: originPosition,
+            destination: destinationPosition,
+            segments: segments,
+            interactive: true,
+            onReady: _onMapReady,
+            onCameraMoveStart: (gesture) {
+              _location.onCameraMoveStart(gesture);
+              if (gesture != GestureType.unknown) {
+                _clearRouteCameraSelection();
+              }
+            },
+          );
+
+    return PopScope<bool>(
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) _location.stop();
+      },
+      child: Scaffold(
+        extendBodyBehindAppBar: true,
         backgroundColor: Colors.white,
-        surfaceTintColor: Colors.transparent,
-        title: const Text('경로 상세'),
-      ),
-      bottomNavigationBar: SafeArea(
-        top: false,
-        minimum: const EdgeInsets.fromLTRB(20, 8, 20, 16),
-        child: AppPrimaryButton(
-          label: '경로 안내',
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute<void>(
-              builder: (_) => const RouteGuidanceScreen(),
+        appBar: AppBar(
+          automaticallyImplyLeading: false,
+          leadingWidth: _mapEdgeInset + _mapButtonSize,
+          leading: _guiding || _starting
+              ? null
+              : Center(
+                  child: Padding(
+                    padding: const EdgeInsetsDirectional.only(
+                      start: _mapEdgeInset,
+                    ),
+                    child: AppMapIconButton(
+                      icon: Icons.arrow_back,
+                      label: '뒤로 가기',
+                      size: _mapButtonSize,
+                      onPressed: () => Navigator.of(context).maybePop(),
+                    ),
+                  ),
+                ),
+          backgroundColor: Colors.transparent,
+          surfaceTintColor: Colors.transparent,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+        ),
+        body: SafeArea(
+          top: false,
+          child: LayoutBuilder(
+            builder: (context, constraints) => Stack(
+              children: [
+                // Size the native view for the lowest sheet position once.
+                // Overscan above the viewport centers the default map opening.
+                Positioned.fill(
+                  top:
+                      -constraints.maxHeight *
+                      (_initialSheetSize - _minSheetSize),
+                  bottom: constraints.maxHeight * _minSheetSize,
+                  child: map,
+                ),
+                AnimatedBuilder(
+                  animation: _sheet,
+                  builder: (context, child) => Positioned(
+                    right: _mapEdgeInset,
+                    bottom:
+                        _mapButtonGap +
+                        constraints.maxHeight *
+                            (_sheet.isAttached
+                                ? _sheet.size
+                                : _initialSheetSize),
+                    child: child!,
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    spacing: _mapButtonGap,
+                    children: [
+                      AppMapIconButton(
+                        label: '전체 경로 보기',
+                        size: _mapButtonSize,
+                        onPressed:
+                            _map == null ||
+                                _location.isLocating ||
+                                _movingRouteCamera
+                            ? null
+                            : () => _moveCameraToRoute(
+                                originPosition,
+                                destinationPosition,
+                              ),
+                        icon: Icons.route_outlined,
+                        iconColor: _routeCameraView != null ? _brand : null,
+                      ),
+                      AppMapIconButton(
+                        label: '현재 위치로 이동',
+                        size: _mapButtonSize,
+                        onPressed:
+                            _map == null ||
+                                _location.isLocating ||
+                                _movingRouteCamera
+                            ? null
+                            : _recenter,
+                        icon: Icons.my_location,
+                        iconColor: _location.isSelected ? _brand : null,
+                      ),
+                    ],
+                  ),
+                ),
+                DraggableScrollableSheet(
+                  controller: _sheet,
+                  initialChildSize: _initialSheetSize,
+                  minChildSize: _minSheetSize,
+                  maxChildSize: _maxSheetExtent(context, constraints.maxHeight),
+                  snap: true,
+                  snapSizes: const [_initialSheetSize],
+                  shouldCloseOnMinExtent: false,
+                  builder: (context, scrollController) => Material(
+                    color: Colors.white,
+                    elevation: 4,
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(24),
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: Column(
+                      children: [
+                        Expanded(
+                          child: ListView(
+                            controller: scrollController,
+                            padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+                            children: [
+                              Center(
+                                child: Semantics(
+                                  label: '경로 여정 패널 크기 조절',
+                                  child: Container(
+                                    width: 36,
+                                    height: 4,
+                                    margin: const EdgeInsets.only(bottom: 14),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFD5D3D1),
+                                      borderRadius: BorderRadius.circular(2),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              Text(
+                                '${origin.name} → ${destination.name}',
+                                style: theme.textTheme.titleLarge?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              if (minutes is num)
+                                Text(
+                                  '총 ${minutes.round()}분',
+                                  style: theme.textTheme.headlineMedium
+                                      ?.copyWith(fontWeight: FontWeight.w800),
+                                ),
+                              if (metrics.isNotEmpty)
+                                Text(
+                                  metrics.join(' · '),
+                                  style: const TextStyle(color: Colors.black54),
+                                ),
+                              if (_guiding && _activeSegment == null)
+                                const Padding(
+                                  padding: EdgeInsets.only(top: 6),
+                                  child: Text('경로에서 현재 이동 구간을 확인 중이에요.'),
+                                ),
+                              JourneyRecommendation(route: route),
+                              if (timed.isNotEmpty) ...[
+                                const SizedBox(height: 12),
+                                JourneyTimeBar(segments: timed),
+                              ],
+                              const SizedBox(height: 16),
+                              Text(
+                                '상세 이동 여정',
+                                style: theme.textTheme.titleLarge?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              if (times.isNotEmpty) Text(times.join(' → ')),
+                              const SizedBox(height: 8),
+                              if (segments.isEmpty)
+                                const Text('구간별 이동 정보가 없어요.'),
+                              for (final (index, step) in segments.indexed)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: _guiding && _activeSegment == index
+                                        ? const Color(0xFFFBEDE7)
+                                        : null,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: JourneyStep(segment: step),
+                                ),
+                              if (!loading &&
+                                  segments.every(
+                                    (step) => journeyShapePoints(step) == null,
+                                  ))
+                                const Text(
+                                  '점선은 출발지와 도착지를 잇는 직선이에요.',
+                                  style: TextStyle(
+                                    color: Colors.black54,
+                                    fontSize: 12,
+                                  ),
+                                )
+                              else if (segments.any(
+                                (step) =>
+                                    step['shape_status'] == 'fallback' ||
+                                    step['is_actual_shape'] == false,
+                              ))
+                                const Text(
+                                  '점선은 추정 구간이에요.',
+                                  style: TextStyle(
+                                    color: Colors.black54,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              if (sources.isNotEmpty)
+                                Text(
+                                  sources.join(' · '),
+                                  style: const TextStyle(
+                                    color: Colors.black54,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              if (!_guiding && !_starting)
+                                ..._relatedRoutes(context, route),
+                            ],
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 6, 20, 10),
+                          child: SizedBox(
+                            width: double.infinity,
+                            child: AppPrimaryButton(
+                              label: _guiding
+                                  ? '안내 종료'
+                                  : _starting
+                                  ? '현재 위치 확인 중…'
+                                  : '안내 시작',
+                              enabled:
+                                  _guiding ||
+                                  (!_starting &&
+                                      _map != null &&
+                                      !_location.isLocating &&
+                                      !_movingRouteCamera),
+                              onTap: _guiding
+                                  ? () => Navigator.pop(context, true)
+                                  : () => _startGuidance(segments),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-        ),
-      ),
-      body: SafeArea(
-        top: false,
-        bottom: false,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-          children: [
-            Text(
-              '${origin.name} → ${destination.name}',
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            if (minutes is num)
-              Text(
-                '총 ${minutes.round()}분',
-                style: theme.textTheme.headlineMedium?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            if (metrics.isNotEmpty)
-              Text(
-                metrics.join(' · '),
-                style: const TextStyle(color: Colors.black54),
-              ),
-            JourneyRecommendation(route: route),
-            const SizedBox(height: 18),
-            if (loading)
-              const SizedBox(
-                height: 240,
-                child: Center(child: CircularProgressIndicator()),
-              )
-            else
-              JourneyPreviewMap(
-                origin: journeyPosition(detail?['origin']) ?? origin.position,
-                destination:
-                    journeyPosition(detail?['destination']) ??
-                    destination.position,
-                segments: segments,
-              ),
-            if (sources.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Text(
-                  sources.join(' · '),
-                  style: const TextStyle(color: Colors.black54, fontSize: 12),
-                ),
-              ),
-            const SizedBox(height: 20),
-            Text(
-              '상세 이동 여정',
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            if (times.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Text(times.join(' → ')),
-              ),
-            const SizedBox(height: 12),
-            if (segments.isEmpty) const Text('구간별 이동 정보가 없어요.'),
-            for (final segment in segments) _JourneyStep(segment: segment),
-            ..._relatedRoutes(context, route),
-          ],
         ),
       ),
     );
@@ -235,17 +596,23 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
           title: Text(title.isEmpty ? '경로 상세 보기' : title),
           subtitle: comparison == null ? null : Text(comparison),
           trailing: const Icon(Icons.chevron_right),
-          onTap: () => Navigator.of(context).push<void>(
-            MaterialPageRoute(
-              builder: (_) => RouteDetailScreen(
-                route: candidate,
-                searchId: widget.searchId,
-                origin: widget.origin,
-                destination: widget.destination,
-                candidates: widget.candidates,
+          onTap: () async {
+            final finished = await Navigator.of(context).push<bool>(
+              MaterialPageRoute<bool>(
+                builder: (_) => RouteDetailScreen(
+                  route: candidate,
+                  searchId: widget.searchId,
+                  journeyClient: widget.journeyClient,
+                  origin: widget.origin,
+                  destination: widget.destination,
+                  candidates: widget.candidates,
+                ),
               ),
-            ),
-          ),
+            );
+            if (finished == true && context.mounted) {
+              Navigator.pop(context, true);
+            }
+          },
         );
       }
     }
@@ -271,102 +638,5 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
         '잔여 5석 이하 확률 ${reduction.toStringAsFixed(1)}%p 감소',
     ];
     return changes.isEmpty ? null : changes.join(' · ');
-  }
-}
-
-class _JourneyStep extends StatelessWidget {
-  const _JourneyStep({required this.segment});
-
-  final JourneySegment segment;
-
-  @override
-  Widget build(BuildContext context) {
-    final mode = journeyMode(segment);
-    final (label, icon) = switch (mode) {
-      'bus' => ('버스', Icons.directions_bus_outlined),
-      'subway' => ('지하철', Icons.subway_outlined),
-      'walk' => ('도보', Icons.directions_walk),
-      'transfer_walk' => ('환승 도보', Icons.directions_walk),
-      'wait' => ('대기', Icons.schedule),
-      _ => ('이동', Icons.route_outlined),
-    };
-    final isTransit = mode == 'bus' || mode == 'subway';
-    final color = isTransit
-        ? journeySegmentColor(segment)
-        : const Color(0xFF666A6E);
-    final boarding = journeyStationName(
-      segment['boarding_station'],
-      segment['start_stop_name'],
-    );
-    final alighting = journeyStationName(
-      segment['alighting_station'],
-      segment['end_stop_name'],
-    );
-    final prediction = segment['seat_prediction'] as Map?;
-    final seats = prediction?['estimated_remaining_seats'];
-    final seatInfo = [
-      if (seats is num)
-        '예상 잔여 ${seats.round()}석'
-      else
-        ?journeySeatStatus(prediction?['status']),
-      ?journeyLowSeatChance(prediction?['low_seat_probability']),
-    ];
-    final minutes = journeyMinutes(segment);
-    final distance = segment['distance_meters'];
-    final routeName = segment['route_name'];
-    final start = journeyClock(
-      segment['estimated_start_at'] ?? segment['estimated_boarding_at'],
-    );
-    final end = journeyClock(
-      segment['estimated_end_at'] ?? segment['estimated_alighting_at'],
-    );
-    final time = [?start, ?end].join('–');
-    final stops = [
-      if (boarding != null) isTransit ? '$boarding 승차' : boarding,
-      if (alighting != null) isTransit ? '$alighting 하차' : alighting,
-    ];
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, color: color),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              spacing: 4,
-              children: [
-                Text(
-                  [
-                    if (time.isNotEmpty) time,
-                    if (isTransit &&
-                        routeName is String &&
-                        routeName.isNotEmpty)
-                      '$routeName $label'
-                    else
-                      label,
-                    if (minutes != null) '${minutes.round()}분',
-                  ].join(' · '),
-                  style: const TextStyle(fontWeight: FontWeight.w700),
-                ),
-                if (stops.isNotEmpty) Text(stops.join(' → ')),
-                if (distance is num) Text('${distance.round()}m'),
-                if (seatInfo.isNotEmpty)
-                  Text(
-                    seatInfo.join(' · '),
-                    style: TextStyle(
-                      color: seats is num
-                          ? const Color(0xFF386044)
-                          : Colors.black54,
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }

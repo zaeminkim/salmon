@@ -1,8 +1,9 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart'
-    as kakao;
+import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart' as kakao;
+
+import '../data/auth/kakao_login_sdk.dart';
+import '../data/backend.dart';
 
 class KakaoLogin extends StatefulWidget {
   const KakaoLogin({super.key});
@@ -14,7 +15,7 @@ class KakaoLogin extends StatefulWidget {
 class _KakaoLoginState extends State<KakaoLogin> {
   final Dio _dio = Dio(
     BaseOptions(
-      baseUrl: 'https://geoseulleong-06469e76bb18.herokuapp.com',
+      baseUrl: salmonBackendUrl,
       connectTimeout: const Duration(seconds: 20),
       receiveTimeout: const Duration(seconds: 30),
       contentType: Headers.jsonContentType,
@@ -30,13 +31,6 @@ class _KakaoLoginState extends State<KakaoLogin> {
   bool _privacyAgreed = false;
   bool _isLoading = false;
   String _message = '서버 연결 테스트를 시작하세요.';
-
-  bool _isCancelled(Object error) {
-    return (error is PlatformException &&
-            (error.code == 'CANCELED' || error.code == 'CANCELLED')) ||
-        (error is kakao.KakaoClientException &&
-            error.reason == kakao.ClientErrorCause.cancelled);
-  }
 
   // 모든 버튼 작업의 로딩·실패 처리를 공통으로 담당합니다.
   Future<void> _run(
@@ -57,7 +51,7 @@ class _KakaoLoginState extends State<KakaoLogin> {
 
       String message;
 
-      if (_isCancelled(error)) {
+      if (isKakaoLoginCancellation(error)) {
         message = '카카오 로그인을 취소했습니다.';
       } else if (error is DioException) {
         final status = error.response?.statusCode;
@@ -85,18 +79,7 @@ class _KakaoLoginState extends State<KakaoLogin> {
   }
 
   // 1. 카카오 SDK에서 카카오 토큰을 받습니다.
-  Future<kakao.OAuthToken> _authenticateKakao() async {
-    if (await kakao.isKakaoTalkInstalled()) {
-      try {
-        return await kakao.UserApi.instance.loginWithKakaoTalk();
-      } catch (error) {
-        if (_isCancelled(error)) rethrow;
-      }
-    }
-
-    return await kakao.UserApi.instance.loginWithKakaoAccount();
-  }
-
+  Future<kakao.OAuthToken> _authenticateKakao() => getKakaoLoginToken();
   // 2. 카카오 토큰을 거슬렁 서버에 보내 로그인합니다.
   Future<void> _login() async {
     await _run('카카오 인증 및 서버 로그인 중...', () async {
@@ -133,7 +116,8 @@ class _KakaoLoginState extends State<KakaoLogin> {
         _accessToken = accessToken;
         _refreshToken = refreshToken;
         _serverUser = Map<String, dynamic>.from(user);
-        _message = '서버 로그인 성공: HTTP ${response.statusCode}\n'
+        _message =
+            '서버 로그인 성공: HTTP ${response.statusCode}\n'
             '이제 내 정보 조회 버튼을 눌러 보세요.';
       });
     });
@@ -147,9 +131,7 @@ class _KakaoLoginState extends State<KakaoLogin> {
     await _run('거슬렁 내 정보 조회 중...', () async {
       final response = await _dio.get<Map<String, dynamic>>(
         '/api/v1/users/me',
-        options: Options(
-          headers: {'Authorization': 'Bearer $token'},
-        ),
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
 
       final user = response.data?['user'];
@@ -161,7 +143,8 @@ class _KakaoLoginState extends State<KakaoLogin> {
 
       setState(() {
         _serverUser = Map<String, dynamic>.from(user);
-        _message = '내 정보 조회 성공: HTTP ${response.statusCode}\n'
+        _message =
+            '내 정보 조회 성공: HTTP ${response.statusCode}\n'
             '거슬렁 토큰 인증까지 정상 작동합니다.';
       });
     });

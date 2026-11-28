@@ -1,11 +1,13 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 
+import '../data/backend.dart';
+
 // AuthApi: 화면에서 받은 값을 서버로 보내는 역할 (서버와 통신)
 class AuthApi {
   final Dio _dio = Dio(
     BaseOptions(
-      baseUrl: 'https://geoseulleong-06469e76bb18.herokuapp.com',
+      baseUrl: salmonBackendUrl,
       contentType: Headers.jsonContentType,
       connectTimeout: const Duration(seconds: 10),
       receiveTimeout: const Duration(seconds: 15),

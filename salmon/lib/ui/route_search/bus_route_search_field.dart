@@ -3,6 +3,10 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 
+import '../../data/journeys/bus_route_search_api.dart';
+import 'search_field_clear_button.dart';
+import 'search_suggestions_progress.dart';
+
 class BusRouteSearchField extends StatefulWidget {
   const BusRouteSearchField({
     super.key,
@@ -24,15 +28,7 @@ class BusRouteSearchField extends StatefulWidget {
 }
 
 class _BusRouteSearchFieldState extends State<BusRouteSearchField> {
-  late final _client =
-      widget.client ??
-      Dio(
-        BaseOptions(
-          baseUrl: 'https://geoseulleong-06469e76bb18.herokuapp.com',
-          connectTimeout: const Duration(seconds: 10),
-          receiveTimeout: const Duration(seconds: 15),
-        ),
-      );
+  late final _client = widget.client ?? createBusRouteSearchClient();
   Timer? _debounce;
   CancelToken? _request;
   List<Map<String, dynamic>> _routes = [];
@@ -68,22 +64,23 @@ class _BusRouteSearchFieldState extends State<BusRouteSearchField> {
     }
   }
 
+  void _onChanged(String value) {
+    _selected = false;
+    widget.onSelectionChanged(null);
+    _queueSearch(value);
+  }
+
   Future<void> _search(String query) async {
     final request = _request = CancelToken();
     try {
-      final response = await _client.get<Map<String, dynamic>>(
-        '/api/v1/bus-routes/search',
-        queryParameters: {'q': query, 'limit': 6},
+      final routes = await searchBusRoutes(
+        _client,
+        query,
         cancelToken: request,
       );
-      final routes = response.data?['routes'];
-      if (routes is! List) throw const FormatException('Missing bus routes');
       if (!mounted || request.isCancelled) return;
       setState(() {
-        _routes = routes
-            .whereType<Map<String, dynamic>>()
-            .where((route) => _number(route).isNotEmpty)
-            .toList();
+        _routes = routes.where((route) => _number(route).isNotEmpty).toList();
         _loading = false;
         if (_routes.isEmpty) _message = '일치하는 광역버스 노선이 없어요.';
       });
@@ -138,21 +135,20 @@ class _BusRouteSearchFieldState extends State<BusRouteSearchField> {
         TextField(
           controller: widget.controller,
           focusNode: widget.focusNode,
-          decoration: widget.decoration,
+          decoration: widget.decoration.copyWith(
+            suffixIcon: SearchFieldClearButton(
+              controller: widget.controller,
+              tooltip: '선호 광역버스 지우기',
+              onCleared: () => _onChanged(''),
+            ),
+          ),
           autocorrect: false,
           textInputAction: TextInputAction.done,
           textCapitalization: TextCapitalization.characters,
-          onChanged: (value) {
-            _selected = false;
-            widget.onSelectionChanged(null);
-            _queueSearch(value);
-          },
+          onChanged: _onChanged,
         ),
         if (_loading)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 8),
-            child: LinearProgressIndicator(),
-          ),
+          const SearchSuggestionsProgress(semanticLabel: '광역버스 노선 검색 중'),
         if (_message case final message?)
           Padding(padding: const EdgeInsets.all(8), child: Text(message)),
         for (final route in _routes)

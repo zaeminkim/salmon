@@ -1,37 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:kakao_map_sdk/kakao_map_sdk.dart';
 
-import '../core/journey_presentation.dart';
-
-LatLng? journeyPosition(Object? place) =>
-    place is Map ? _position(place['latitude'], place['longitude']) : null;
-
-LatLng? _position(Object? latitude, Object? longitude) {
-  if (latitude is! num ||
-      longitude is! num ||
-      !latitude.isFinite ||
-      !longitude.isFinite ||
-      latitude.abs() > 90 ||
-      longitude.abs() > 180) {
-    return null;
-  }
-  return LatLng(latitude.toDouble(), longitude.toDouble());
-}
-
-List<LatLng>? journeyShapePoints(JourneySegment segment) {
-  final shape = segment['shape'];
-  if (shape is! Map || shape['type'] != 'LineString') return null;
-  final coordinates = shape['coordinates'];
-  if (coordinates is! List || coordinates.length < 2) return null;
-  final points = <LatLng>[];
-  for (final pair in coordinates) {
-    if (pair is! List || pair.length != 2) return null;
-    final point = _position(pair[1], pair[0]);
-    if (point == null) return null;
-    points.add(point);
-  }
-  return points;
-}
+import '../core/widgets/journey_map_geometry.dart';
+import '../core/widgets/journey_presentation.dart';
 
 class JourneyPreviewMap extends StatefulWidget {
   const JourneyPreviewMap({
@@ -39,11 +10,17 @@ class JourneyPreviewMap extends StatefulWidget {
     required this.origin,
     required this.destination,
     required this.segments,
+    this.interactive = false,
+    this.onReady,
+    this.onCameraMoveStart,
   });
 
   final LatLng origin;
   final LatLng destination;
   final List<JourneySegment> segments;
+  final bool interactive;
+  final ValueChanged<KakaoMapController>? onReady;
+  final ValueChanged<GestureType>? onCameraMoveStart;
 
   @override
   State<JourneyPreviewMap> createState() => _JourneyPreviewMapState();
@@ -140,11 +117,12 @@ class _JourneyPreviewMapState extends State<JourneyPreviewMap> {
         } else {
           await controller.shapeLayer.addPolylineShape(
             MapPoint(line.points),
-            PolylineStyle(line.color, 5),
+            PolylineStyle(line.color, 16),
             PolylineCap.round,
           );
         }
       }
+      if (mounted) widget.onReady?.call(controller);
     } catch (error) {
       _showMapError(error);
     }
@@ -156,7 +134,7 @@ class _JourneyPreviewMapState extends State<JourneyPreviewMap> {
     LatLng end,
   ) async {
     if (start == end) return;
-    final style = PolylineStyle(_guideColor, 3);
+    final style = PolylineStyle(_guideColor, 16);
     LatLng point(double fraction) => LatLng(
       start.latitude + (end.latitude - start.latitude) * fraction,
       start.longitude + (end.longitude - start.longitude) * fraction,
@@ -172,6 +150,19 @@ class _JourneyPreviewMapState extends State<JourneyPreviewMap> {
 
   @override
   Widget build(BuildContext context) {
+    if (widget.interactive) {
+      return _failed
+          ? const ColoredBox(
+              color: Color(0xFFF4F3F2),
+              child: Center(child: Text('지도를 불러오지 못했어요.')),
+            )
+          : KakaoMap(
+              option: KakaoMapOption(position: widget.origin, zoomLevel: 15),
+              onMapReady: _drawRoute,
+              onMapError: _showMapError,
+              onCameraMoveStart: widget.onCameraMoveStart,
+            );
+    }
     final guideLabel = _lines.isEmpty
         ? '점선은 출발지와 도착지를 잇는 직선이에요.'
         : '점선은 추정 구간이에요.';

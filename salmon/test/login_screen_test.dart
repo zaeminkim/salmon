@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'package:salmon/data/auth/auth_api.dart';
 import 'package:salmon/ui/auth/login_screen.dart';
+import 'package:salmon/ui/core/widgets/app_message_dialog.dart';
 
 void main() {
   testWidgets(
@@ -67,6 +68,20 @@ void main() {
 
       await tester.tap(find.text('계정이 없으신가요? 회원가입'));
       await tester.pumpAndSettle();
+      for (final title in ['이용약관', '개인정보 수집 및 이용']) {
+        final details = find.byTooltip('$title 자세히 보기');
+        await tester.ensureVisible(details);
+        await tester.tap(details);
+        await tester.pumpAndSettle();
+        expect(
+          tester.widget<AppMessageDialog>(find.byType(AppMessageDialog)).title,
+          title,
+        );
+        await tester.tap(find.widgetWithText(OutlinedButton, '닫기'));
+        await tester.pumpAndSettle();
+        expect(find.byType(AppMessageDialog), findsNothing);
+      }
+
       final fields = find.byType(EditableText);
       for (final (index, value) in [
         (0, 'user@example.com'),
